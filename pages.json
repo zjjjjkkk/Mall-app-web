@@ -1,18 +1,13 @@
 {
 	"pages": [
-
 		{
 			"path": "pages/index/index",
 			"style": {
-				// #ifdef MP 
 				"navigationBarTitleText": "Mall商城",
-				//"navigationStyle": "custom",
-				// #endif 
 				"enablePullDownRefresh": true,
 				"app-plus": {
 					"titleNView": {
 						"type": "transparent",
-					
 						"buttons": [{
 								"fontSrc": "/static/yticon.ttf",
 								"text": "\ue60d",
@@ -44,24 +39,26 @@
 					}
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/set/set",
 			"style": {
 				"navigationBarTitleText": "设置"
 			}
 		},
-
 		{
 			"path": "pages/userinfo/userinfo",
 			"style": {
 				"navigationBarTitleText": "修改资料"
 			}
-		}, {
+		},
+		{
 			"path": "pages/cart/cart",
 			"style": {
 				"navigationBarTitleText": "购物车"
 			}
-		}, {
+		},
+		{
 			"path": "pages/public/login",
 			"style": {
 				"navigationBarTitleText": "",
@@ -71,7 +68,8 @@
 					"animationType": "slide-in-bottom"
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/public/register",
 			"style": {
 				"navigationBarTitleText": "",
@@ -81,13 +79,12 @@
 					"animationType": "slide-in-bottom"
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/user/user",
 			"style": {
 				"navigationBarTitleText": "我的",
-				// #ifdef MP
 				"navigationStyle": "custom",
-				// #endif
 				"app-plus": {
 					"bounce": "none",
 					"titleNView": {
@@ -112,7 +109,8 @@
 					}
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/order/order",
 			"style": {
 				"navigationBarTitleText": "我的订单",
@@ -120,30 +118,67 @@
 					"bounce": "none"
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/money/money",
 			"style": {}
-		}, {
+		},
+		{
 			"path": "pages/order/createOrder",
 			"style": {
 				"navigationBarTitleText": "创建订单"
 			}
-		}, {
+		},
+		{
 			"path": "pages/order/orderDetail",
 			"style": {
 				"navigationBarTitleText": "订单详情"
 			}
-		}, {
+		},
+		// 新增：退款申请页路由
+		{
+			"path": "pages/order/refundApply",
+			"style": {
+				"navigationBarTitleText": "申请退款",
+				"app-plus": {
+					"bounce": "none"
+				}
+			}
+		},
+		// 新增：退货申请页路由
+		{
+			"path": "pages/order/returnApply",
+			"style": {
+				"navigationBarTitleText": "申请退货",
+				"app-plus": {
+					"bounce": "none"
+				}
+			}
+		},
+		// 新增：我的退款列表页路由
+		{
+			"path": "pages/user/refundList",
+			"style": {
+				"navigationBarTitleText": "我的退款",
+				"enablePullDownRefresh": true,
+				"app-plus": {
+					"bounce": "none"
+				}
+			}
+		},
+		{
 			"path": "pages/address/address",
 			"style": {
 				"navigationBarTitleText": "收货地址"
 			}
-		}, {
+		},
+		{
 			"path": "pages/address/addressManage",
 			"style": {
 				"navigationBarTitleText": ""
 			}
-		}, {
+		},
+		{
 			"path": "pages/money/pay",
 			"style": {
 				"navigationBarTitleText": "支付"
@@ -154,12 +189,14 @@
 			"style": {
 				"navigationBarTitleText": "支付成功"
 			}
-		}, {
+		},
+		{
 			"path": "pages/notice/notice",
 			"style": {
 				"navigationBarTitleText": "通知"
 			}
-		}, {
+		},
+		{
 			"path": "pages/category/category",
 			"style": {
 				"navigationBarTitleText": "分类",
@@ -167,43 +204,50 @@
 					"bounce": "none"
 				}
 			}
-		}, {
+		},
+		{
 			"path": "pages/product/list",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "商品列表"
 			}
-		}, {
+		},
+		{
 			"path": "pages/coupon/couponList",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "优惠券列表"
 			}
-		}, {
+		},
+		{
 			"path": "pages/brand/brandDetail",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "品牌详情"
 			}
-		}, {
+		},
+		{
 			"path": "pages/brand/list",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "推荐品牌列表"
 			}
-		}, {
+		},
+		{
 			"path": "pages/product/newProductList",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "新鲜好物"
 			}
-		}, {
+		},
+		{
 			"path": "pages/product/hotProductList",
 			"style": {
 				"enablePullDownRefresh": true,
 				"navigationBarTitleText": "人气推荐"
 			}
-		}, {
+		},
+		{
 			"path": "pages/user/readHistory",
 			"style": {
 				"enablePullDownRefresh": true,
@@ -220,7 +264,8 @@
 					}
 				}
 			}
-		},{
+		},
+		{
 			"path": "pages/user/productCollection",
 			"style": {
 				"enablePullDownRefresh": true,
@@ -237,7 +282,8 @@
 					}
 				}
 			}
-		},{
+		},
+		{
 			"path": "pages/user/brandAttention",
 			"style": {
 				"enablePullDownRefresh": true,

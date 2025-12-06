@@ -65,7 +65,7 @@
 					<text class="yticon icon-yishouhuo"></text>
 					<text>待收货</text>
 				</view>
-				<view class="order-item" hover-class="common-hover"  :hover-stay-time="50">
+				<view class="order-item" @click="navTo('/pages/user/refundList')" hover-class="common-hover"  :hover-stay-time="50">
 					<text class="yticon icon-shouhoutuikuan"></text>
 					<text>退款/售后</text>
 				</view>
@@ -77,6 +77,13 @@
 				<list-cell icon="icon-shoucang" iconColor="#5fcda2" title="我的关注" @eventClick="navTo('/pages/user/brandAttention')"></list-cell>
 				<list-cell icon="icon-shoucang_xuanzhongzhuangtai" iconColor="#54b4ef" title="我的收藏" @eventClick="navTo('/pages/user/productCollection')"></list-cell>
 				<list-cell icon="icon-pingjia" iconColor="#ee883b" title="我的评价"></list-cell>
+				<!-- 新增：我的退款入口 -->
+				<list-cell 
+					icon="icon-tuikuan" 
+					iconColor="#fa436a" 
+					title="我的退款" 
+					@eventClick="navTo('/pages/user/refundList')"
+				></list-cell>
 				<list-cell icon="icon-shezhi1" iconColor="#e07472" title="设置" border="" @eventClick="navTo('/pages/set/set')"></list-cell>
 			</view>
 		</view>
@@ -142,7 +149,6 @@
 			...mapState(['hasLogin','userInfo'])
 		},
         methods: {
-
 			/**
 			 * 统一跳转接口,拦截未登录路由
 			 * navigator标签现在默认没有转场动画，所以用view
@@ -211,7 +217,6 @@
 	  background: #fff;
 	  border-radius: 10upx;
 	}
-
 	.user-section{
 		height: 520upx;
 		padding: 100upx 30upx 0;
@@ -244,7 +249,6 @@
 			margin-left: 20upx;
 		}
 	}
-
 	.vip-card-box{
 		display:flex;
 		flex-direction: column;
@@ -374,4 +378,8 @@
 		}
 	}
 	
+	/* 新增：适配退款图标样式（若图标大小不一致可调整） */
+	.icon-tuikuan {
+		font-size: 44upx;
+	}
 </style>

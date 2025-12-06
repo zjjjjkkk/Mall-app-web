@@ -44,10 +44,12 @@
 							<button class="action-btn recom" @click="payOrder(item.id)">立即付款</button>
 						</view>
 						<view class="action-box b-t" v-if="item.status == 2">
+							<button class="action-btn" @click="applyRefund(item)">申请退款</button>
 							<button class="action-btn">查看物流</button>
 							<button class="action-btn recom" @click="receiveOrder(item.id)">确认收货</button>
 						</view>
 						<view class="action-box b-t" v-if="item.status == 3">
+							<button class="action-btn" @click="applyRefund(item)">申请退款</button>
 							<button class="action-btn recom">评价商品</button>
 						</view>
 					</view>
@@ -57,6 +59,64 @@
 				</scroll-view>
 			</swiper-item>
 		</swiper>
+
+		<!-- 退款申请弹窗 -->
+		<view class="refund-modal" v-if="showRefundModal" @click="closeRefundModal">
+			<view class="refund-modal-content" @click.stop>
+				<view class="refund-modal-header">
+					<text class="refund-modal-title">申请退款</text>
+					<text class="refund-modal-close" @click="closeRefundModal">×</text>
+				</view>
+				<view class="refund-modal-body">
+					<view class="refund-order-info">
+						<text class="info-label">订单编号：</text>
+						<text class="info-value">{{ currentOrder.orderSn || '' }}</text>
+					</view>
+					<view class="refund-order-info" v-if="currentOrder.payAmount">
+						<text class="info-label">订单金额：</text>
+						<text class="info-value">￥{{ currentOrder.payAmount }}</text>
+					</view>
+					<view class="refund-form-item">
+						<text class="form-label">退款原因 <text class="required">*</text></text>
+						<textarea
+							class="refund-textarea"
+							v-model="refundForm.reason"
+							placeholder="请选择/填写退款原因"
+							maxlength="200"
+						></textarea>
+						<view class="reason-tags" v-if="!refundForm.reason">
+							<view 
+								v-for="(reason, index) in refundReasons" 
+								:key="index"
+								class="reason-tag"
+								@click="selectRefundReason(reason)"
+							>
+								{{ reason }}
+							</view>
+						</view>
+					</view>
+					<view class="refund-form-item">
+						<text class="form-label">退款说明</text>
+						<textarea
+							class="refund-textarea"
+							v-model="refundForm.desc"
+							placeholder="可选，补充退款细节"
+							maxlength="200"
+						></textarea>
+					</view>
+				</view>
+				<view class="refund-modal-footer">
+					<button class="refund-btn-cancel" @click="closeRefundModal">取消</button>
+					<button 
+						class="refund-btn-submit" 
+						:disabled="submittingRefund || !refundForm.reason"
+						@click="submitRefund"
+					>
+						{{ submittingRefund ? '提交中...' : '提交申请' }}
+					</button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -70,7 +130,8 @@ import {
 	fetchOrderList,
 	cancelUserOrder,
 	confirmReceiveOrder,
-	deleteUserOrder
+	deleteUserOrder,
+	createOrderReturnApply
 } from '@/api/order.js'
 export default {
 	components: {
@@ -108,6 +169,21 @@ export default {
 				text: '已取消'
 			}
 			],
+			// 退款弹窗相关
+			showRefundModal: false,
+			currentOrder: {},
+			submittingRefund: false,
+			refundForm: {
+				reason: '',
+				desc: ''
+			},
+			refundReasons: [
+				'不想要了',
+				'商品质量问题',
+				'商品与描述不符',
+				'收到商品损坏',
+				'其他原因'
+			]
 		}
 	},
 	onLoad (options) {
@@ -283,6 +359,88 @@ export default {
 		showOrderDetail (orderId) {
 			uni.navigateTo({
 				url: `/pages/order/orderDetail?orderId=${orderId}`
+			})
+		},
+		//申请退款 - 显示弹窗
+		applyRefund (order) {
+			console.log('订单信息：', order)
+			this.currentOrder = order
+			this.refundForm = {
+				reason: '',
+				desc: ''
+			}
+			this.showRefundModal = true
+		},
+		//关闭退款弹窗
+		closeRefundModal () {
+			this.showRefundModal = false
+			this.currentOrder = {}
+			this.refundForm = {
+				reason: '',
+				desc: ''
+			}
+		},
+		//选择退款原因
+		selectRefundReason (reason) {
+			this.refundForm.reason = reason
+		},
+		//提交退款申请
+		submitRefund () {
+			if (!this.refundForm.reason || this.refundForm.reason.trim() === '') {
+				uni.showToast({ title: '请填写退款原因', icon: 'none' })
+				return
+			}
+
+			// 获取退款金额，优先使用 payAmount，如果没有则使用 totalAmount 或其他金额字段
+			let refundAmount = this.currentOrder.payAmount || 
+			                   this.currentOrder.totalAmount || 
+			                   this.currentOrder.payPrice || 
+			                   this.currentOrder.amount ||
+			                   0
+			
+			// 确保 refundAmount 是数字类型
+			refundAmount = parseFloat(refundAmount) || 0
+			
+			if (refundAmount <= 0) {
+				console.error('订单金额异常，currentOrder:', this.currentOrder)
+				uni.showToast({ title: '订单金额异常，无法申请退款', icon: 'none' })
+				return
+			}
+
+			this.submittingRefund = true
+			
+			const params = {
+				orderId: this.currentOrder.id,
+				refundAmount: refundAmount,
+				returnReason: this.refundForm.reason,
+				description: this.refundForm.desc || ''
+			}
+			
+			console.log('提交退款申请参数：', JSON.stringify(params))
+
+			createOrderReturnApply(params).then(res => {
+				if (res.code === 200) {
+					uni.showToast({ 
+						title: res.msg || '退款申请提交成功', 
+						icon: 'success' 
+					})
+					this.closeRefundModal()
+					// 刷新订单列表
+					this.loadData()
+				} else {
+					uni.showToast({ 
+						title: res.msg || '提交失败', 
+						icon: 'none' 
+					})
+				}
+			}).catch(err => {
+				console.error('提交退款申请失败：', err)
+				uni.showToast({ 
+					title: err.message || '网络异常，请稍后重试', 
+					icon: 'none' 
+				})
+			}).finally(() => {
+				this.submittingRefund = false
 			})
 		},
 		//计算商品总数量
@@ -653,5 +811,159 @@ page,
 	100% {
 		opacity: .2
 	}
+}
+
+/* 退款申请弹窗 */
+.refund-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 999;
+}
+
+.refund-modal-content {
+	width: 90%;
+	max-width: 600upx;
+	background: #fff;
+	border-radius: 16upx;
+	overflow: hidden;
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.refund-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 30upx;
+	border-bottom: 1upx solid #e5e5e5;
+}
+
+.refund-modal-title {
+	font-size: 32upx;
+	font-weight: 500;
+	color: #333;
+}
+
+.refund-modal-close {
+	font-size: 48upx;
+	color: #999;
+	line-height: 1;
+	width: 48upx;
+	height: 48upx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.refund-modal-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 30upx;
+}
+
+.refund-order-info {
+	display: flex;
+	align-items: center;
+	margin-bottom: 30upx;
+	font-size: 28upx;
+}
+
+.info-label {
+	color: #999;
+}
+
+.info-value {
+	color: #333;
+	margin-left: 10upx;
+}
+
+.refund-form-item {
+	margin-bottom: 30upx;
+}
+
+.refund-form-item:last-child {
+	margin-bottom: 0;
+}
+
+.form-label {
+	display: block;
+	font-size: 28upx;
+	color: #333;
+	margin-bottom: 16upx;
+	font-weight: 500;
+}
+
+.required {
+	color: #fa436a;
+}
+
+.refund-textarea {
+	width: 100%;
+	min-height: 160upx;
+	padding: 20upx;
+	background: #f5f5f5;
+	border-radius: 8upx;
+	font-size: 28upx;
+	color: #333;
+	box-sizing: border-box;
+}
+
+.reason-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16upx;
+	margin-top: 16upx;
+}
+
+.reason-tag {
+	padding: 12upx 24upx;
+	background: #f5f5f5;
+	border-radius: 8upx;
+	font-size: 26upx;
+	color: #666;
+}
+
+.reason-tag:active {
+	background: #e0e0e0;
+}
+
+.refund-modal-footer {
+	display: flex;
+	padding: 20upx 30upx;
+	border-top: 1upx solid #e5e5e5;
+	gap: 20upx;
+}
+
+.refund-btn-cancel,
+.refund-btn-submit {
+	flex: 1;
+	height: 80upx;
+	line-height: 80upx;
+	border-radius: 8upx;
+	font-size: 28upx;
+	border: none;
+}
+
+.refund-btn-cancel {
+	background: #f5f5f5;
+	color: #666;
+}
+
+.refund-btn-submit {
+	background: #fa436a;
+	color: #fff;
+}
+
+.refund-btn-submit[disabled] {
+	background: #ccc;
+	color: #999;
 }
 </style>

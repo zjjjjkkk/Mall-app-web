@@ -5,9 +5,10 @@
 ## 技术栈
 
 - **框架**: uni-app
-- **开发语言**: Vue.js
+- **开发语言**: Vue.js 2.6.x
 - **网络请求**: luch-request (封装的 uni.request)
 - **状态管理**: Vuex
+- **构建工具**: @vue/cli-service
 
 ## 项目结构
 
@@ -19,6 +20,7 @@ mall-app-web/
 ├── README.md               # 项目说明文档
 ├── main.js                 # 应用入口js文件
 ├── manifest.json           # 应用配置文件
+├── package.json            # 项目依赖配置
 ├── pages.json              # 页面路由配置
 ├── uni.scss                # uni-app全局样式文件
 ├── api/                    # API接口目录
@@ -32,7 +34,9 @@ mall-app-web/
 │   ├── memberProductCollection.js  # 会员商品收藏API
 │   ├── memberReadHistory.js  # 会员阅读历史API
 │   ├── order.js            # 订单管理API
-│   └── product.js          # 商品管理API
+│   ├── product.js          # 商品管理API
+│   ├── refund.js           # 退款相关API
+│   └── returnApply.js      # 退货相关API
 ├── components/             # 组件目录
 │   ├── empty.vue           # 空状态组件
 │   ├── mix-list-cell.vue   # 列表单元格组件
@@ -82,7 +86,9 @@ mall-app-web/
 │   ├── order/              # 订单管理页面
 │   │   ├── createOrder.vue  # 创建订单页面
 │   │   ├── order.vue       # 订单列表页面
-│   │   └── orderDetail.vue  # 订单详情页面
+│   │   ├── orderDetail.vue  # 订单详情页面
+│   │   ├── refundApply.vue  # 退款申请页面
+│   │   └── returnApply.vue  # 退货申请页面
 │   ├── product/            # 商品相关页面
 │   │   ├── hotProductList.vue  # 热销商品列表
 │   │   ├── list.vue        # 商品列表页面
@@ -97,6 +103,7 @@ mall-app-web/
 │   │   ├── brandAttention.vue  # 品牌关注页面
 │   │   ├── productCollection.vue  # 商品收藏页面
 │   │   ├── readHistory.vue  # 阅读历史页面
+│   │   ├── refundList.vue  # 退款列表页面
 │   │   └── user.vue        # 用户中心页面
 │   └── userinfo/           # 用户信息页面
 │       └── userinfo.vue    # 用户信息页面
@@ -183,7 +190,8 @@ mall-app-web/
 └── utils/                  # 工具函数目录
     ├── appConfig.js        # 应用配置
     ├── date.js             # 日期处理工具
-    └── requestUtil.js      # 请求工具
+    ├── request.js          # 请求相关工具
+    └── requestUtil.js      # 请求工具封装
 ```
 
 ## 功能模块
@@ -192,73 +200,125 @@ mall-app-web/
 - 用户注册/登录
 - 用户信息管理
 - 会员中心
+- 收藏管理（商品、品牌）
+- 阅读历史记录
 
 ### 2. 商品模块
-- 商品列表
-- 商品详情
-- 商品分类
+- 商品列表展示
+- 商品分类浏览
+- 商品详情查看
 - 新品/热销商品展示
+- 品牌商品列表
 
 ### 3. 购物车模块
 - 商品添加/删除/修改数量
 - 购物车结算
+- 商品勾选/全选
 
 ### 4. 订单模块
 - 创建订单
-- 订单列表
+- 订单列表（待付款、待发货、待收货、待评价）
 - 订单详情
-- 支付功能
+- 订单支付（支持微信、支付宝）
+- 退款申请
+- 退货申请
 
 ### 5. 地址模块
-- 地址列表
+- 地址列表管理
 - 地址添加/编辑/删除
+- 默认地址设置
 
 ### 6. 优惠券模块
 - 优惠券列表展示
+- 优惠券使用
 
-### 7. 收藏模块
-- 商品收藏管理
-- 品牌关注管理
-- 阅读历史记录
+### 7. 支付模块
+- 订单金额计算
+- 支付页面
+- 支付结果展示
+
+## 核心功能实现
+
+### 订单创建流程
+
+1. **购物车页面**：用户选择商品后点击结算
+2. **订单确认页面**：
+   - 加载商品信息、地址列表、优惠券等
+   - 用户选择收货地址、优惠券、支付方式
+   - 计算订单金额（支持积分抵扣）
+3. **提交订单**：调用 `generateOrder` 接口创建订单
+4. **支付流程**：根据用户选择的支付方式跳转至相应支付页面
+
+### 退款/退货功能
+
+- 支持已完成订单的退款申请
+- 支持已完成订单的退货申请
+- 退款/退货进度跟踪
+
+### 网络请求处理
+
+项目使用 `luch-request` 封装了网络请求，实现了：
+- 请求拦截器（添加token、处理参数）
+- 响应拦截器（统一错误处理、数据格式化）
+- 多状态码处理（401、403、404、500等）
+- 友好的错误提示
 
 ## 开发说明
+
+### 安装依赖
+
+```bash
+npm install
+```
 
 ### 运行项目
 
 ```bash
-# 安装依赖
-npm install
-
 # 运行H5
 npm run dev:h5
+
+# 构建H5
+npm run build:h5
 
 # 运行微信小程序
 npm run dev:mp-weixin
 
-# 运行App
-npm run dev:app-plus
-```
-
-### 构建项目
-
-```bash
-# 构建H5
-npm run build:h5
-
 # 构建微信小程序
 npm run build:mp-weixin
-
-# 构建App
-npm run build:app-plus
 ```
+
+### 项目配置
+
+- **应用配置**：`manifest.json`
+- **页面路由**：`pages.json`
+- **项目依赖**：`package.json`
+- **全局样式**：`uni.scss`
 
 ## 注意事项
 
 1. 项目基于uni-app开发，需使用HBuilderX或Vue CLI进行开发和构建
-2. 网络请求使用了luch-request库，已封装在js_sdk/luch-request目录
+2. 网络请求使用了luch-request库，已封装在 `utils/requestUtil.js`
 3. 组件使用了uni-app官方组件和自定义组件
-4. 图片资源主要存放在images和static目录
+4. 图片资源主要存放在 `images/` 和 `static/` 目录
 5. 项目支持多端运行，但部分功能可能需要根据不同平台进行适配
+6. API接口需要后端服务支持，默认请求地址为 `http://localhost:8085`
+
+## 开发与调试
+
+### 主要页面入口
+
+- 首页：`pages/index/index.vue`
+- 分类：`pages/category/category.vue`
+- 购物车：`pages/cart/cart.vue`
+- 我的：`pages/user/user.vue`
+- 登录：`pages/public/login.vue`
+
+### 核心API接口
+
+- 订单相关：`api/order.js`
+- 商品相关：`api/product.js`
+- 用户相关：`api/member.js`
+- 购物车相关：`api/cart.js`
 
 ## License
 

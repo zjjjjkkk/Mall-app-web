@@ -45,8 +45,9 @@ http.interceptor.response((response) => { /* 请求之后拦截器 */
 	if (res.code !== 200) {
 		//提示错误信息
 		uni.showToast({
-			title:res.message,
-			duration:1500
+			title:res.message || '请求失败',
+			duration:2000,
+			icon:'none'
 		})
 		//401未登录处理
 		if (res.code === 401) {
@@ -66,18 +67,43 @@ http.interceptor.response((response) => { /* 请求之后拦截器 */
 				}
 			});
 		}
-		return Promise.reject(response);
+		return Promise.reject(res);
 	} else {
 		return response.data;
 	}
-}, (response) => {
+}, (error) => {
 	//提示错误信息
-	console.log('response error', response);
+	console.log('response error拦截器:', error);
+	let errorMsg = '网络请求失败';
+	if (error.statusCode) {
+		if (error.statusCode === 500) {
+			errorMsg = '服务器内部错误，请稍后重试';
+			// 尝试获取服务器返回的错误信息
+			if (error.data && error.data.msg) {
+				errorMsg = error.data.msg;
+			} else if (error.data && error.data.message) {
+				errorMsg = error.data.message;
+			} else if (error.data && error.data.error) {
+				errorMsg = error.data.error;
+			}
+		} else if (error.statusCode === 404) {
+			errorMsg = '请求的接口不存在';
+		} else if (error.statusCode === 403) {
+			errorMsg = '没有权限访问该接口';
+		} else if (error.statusCode === 401) {
+			errorMsg = '未登录或登录已过期';
+		} else if (error.statusCode === 400) {
+			errorMsg = '请求参数错误';
+		} else {
+			errorMsg = `请求失败(${error.statusCode})`;
+		}
+	}
 	uni.showToast({
-		title:response.errMsg,
-		duration:1500
+		title: errorMsg,
+		icon: 'none',
+		duration: 3000
 	})
-	return Promise.reject(response);
+	return Promise.reject(error);
 })
 
 export function request (options = {}) {
