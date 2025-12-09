@@ -125,23 +125,44 @@ export function getOrderReturnApplyDetail(id) {
 	})
 }
 
+// 获取最近一次订单
+export function getLatestOrder() {
+	return request({
+		method: 'GET',
+		url: '/order/list',
+		params: {
+			pageNum: 1,
+			pageSize: 1,
+			status: -1 // -1表示获取所有状态的订单
+		}
+	}).then(res => {
+		// 返回最近一次订单
+		if (res.code === 200 && res.data && res.data.list && res.data.list.length > 0) {
+			return {
+				...res,
+				data: res.data.list[0]
+			}
+		}
+		return res
+	})
+}
+
 // 取消退款申请
 // 注意：后端Controller中暂未提供此接口，如需使用请在后端添加
-// 临时保留模拟数据，待后端实现后替换为真实请求
 export function cancelOrderReturnApply(id) {
-	// TODO: 待后端添加取消退款接口后，替换为真实请求
-	// return request({
-	// 	method: 'POST',
-	// 	url: `/order/refundOrder/cancel/${id}`
-	// })
-	
-	// 临时返回模拟数据
-	return new Promise((resolve) => {
-		setTimeout(() => {
-			resolve({
-				code: 200,
-				msg: '退款申请取消成功（模拟）'
-			})
-		}, 500)
+	// 如果后端已实现，取消下面的注释并删除模拟代码
+	return request({
+		method: 'POST',
+		url: `/order/refundOrder/cancel/${id}`
 	})
+	
+	// 如果后端未实现，使用以下模拟代码（仅用于开发测试）
+	// return new Promise((resolve) => {
+	// 	setTimeout(() => {
+	// 		resolve({
+	// 			code: 200,
+	// 			msg: '退款申请取消成功（模拟）'
+	// 		})
+	// 	}, 500)
+	// })
 }

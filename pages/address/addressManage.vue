@@ -75,6 +75,7 @@
 		fetchAddressDetail
 	} from '@/api/address.js';
 	import { fetchLocationAddress } from '@/api/home.js'
+	import { AMAP_KEY } from '@/utils/config.js'
 	export default {
 		data() {
 			return {
@@ -98,7 +99,7 @@
 				amapMarker: null,
 				mapAddressText: '',
 				tempLocation: null,
-				amapJsKey: '889850e947bcc15b8297972cc800270c'
+				amapJsKey: AMAP_KEY
 			}
 		},
 		onLoad(option) {

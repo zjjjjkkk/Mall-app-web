@@ -25,6 +25,29 @@
 			<image class="a-bg" src="/static/tab-cart.png" />
 		</view>
 
+		<!-- 订单商品列表 -->
+		<view class="order-items" v-if="(order.orderItems && order.orderItems.length > 0) || (order.orderItemList && order.orderItemList.length > 0)">
+			<view class="items-title">订单商品</view>
+			<view class="item-card" v-for="(item, index) in (order.orderItems || order.orderItemList || [])" :key="index">
+				<image :src="item.productPic" mode="aspectFill" class="item-image"></image>
+				<view class="item-info">
+					<text class="item-name">{{ item.productName }}</text>
+					<text class="item-attr" v-if="item.productAttr">{{ item.productAttr }}</text>
+					<view class="item-bottom">
+						<text class="item-price">¥{{ item.productPrice }}</text>
+						<text class="item-quantity">x{{ item.productQuantity }}</text>
+					</view>
+				</view>
+				<button 
+					class="comment-btn" 
+					v-if="order.status === 3" 
+					@click="goToComment(item)"
+				>
+					评价
+				</button>
+			</view>
+		</view>
+
 		<!-- 订单核心信息 -->
 		<view class="order-info">
 			<view class="order-sn">订单编号：{{ order.orderSn || '未知' }}</view>
@@ -109,6 +132,10 @@ export default {
 					if (this.order.hasRefund === undefined) {
 						this.order.hasRefund = false
 					}
+					// 统一订单商品列表字段名
+					if (this.order.orderItemList && !this.order.orderItems) {
+						this.order.orderItems = this.order.orderItemList
+					}
 					// 设置订单状态
 					this.setOrderStatus(this.order.status)
 				} else {
@@ -144,6 +171,10 @@ export default {
 				4: { text: '已取消', image: '/static/tab-cart.png' }
 			}
 			this.orderStatus = statusMap[status] || statusMap[0]
+			// 确保订单商品列表字段统一
+			if (this.order.orderItemList && !this.order.orderItems) {
+				this.order.orderItems = this.order.orderItemList
+			}
 		},
 
 		// 打开退款申请弹窗
@@ -206,6 +237,21 @@ export default {
 			} finally {
 				this.submitting = false
 			}
+		},
+		// 跳转到评价页面
+		goToComment(item) {
+			const params = {
+				productId: item.productId,
+				productName: item.productName,
+				productPic: item.productPic,
+				productAttribute: item.productAttr || ''
+			}
+			const query = Object.keys(params).map(key => {
+				return `${key}=${encodeURIComponent(params[key])}`
+			}).join('&')
+			uni.navigateTo({
+				url: `/pages/order/comment?${query}`
+			})
 		}
 	}
 }
@@ -296,6 +342,90 @@ export default {
 	font-size: 28upx;
 	margin-top: 20upx;
 	width: 100%;
+}
+.order-items {
+	background: #fff;
+	padding: 20upx;
+	border-radius: 8upx;
+	margin-bottom: 10upx;
+}
+.items-title {
+	font-size: 30upx;
+	color: #333;
+	font-weight: bold;
+	margin-bottom: 20upx;
+}
+.item-card {
+	display: flex;
+	align-items: center;
+	padding: 20upx 0;
+	border-bottom: 1px solid #f5f5f5;
+	position: relative;
+}
+.item-card:last-child {
+	border-bottom: none;
+}
+.item-image {
+	width: 120upx;
+	height: 120upx;
+	border-radius: 8upx;
+	margin-right: 20upx;
+}
+.item-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+.item-name {
+	font-size: 28upx;
+	color: #333;
+	margin-bottom: 10upx;
+}
+.item-attr {
+	font-size: 24upx;
+	color: #999;
+	margin-bottom: 10upx;
+}
+.item-bottom {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.item-price {
+	font-size: 28upx;
+	color: #fa436a;
+	font-weight: bold;
+}
+.item-quantity {
+	font-size: 24upx;
+	color: #999;
+}
+.item-actions {
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	gap: 10upx;
+}
+
+.action-btn {
+	padding: 10upx 20upx;
+	border-radius: 6upx;
+	font-size: 24upx;
+	border: none;
+}
+
+.comment-btn {
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: #fff;
+	border-radius: 8upx;
+	padding: 12upx 24upx;
+	font-size: 26upx;
 }
 .refund-popup {
 	width: 80%;

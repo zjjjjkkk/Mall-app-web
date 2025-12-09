@@ -1,916 +1,1042 @@
 <template>
 	<view class="container">
-		<!-- 小程序头部兼容 -->
-		<!-- #ifdef MP -->
-		<view class="mp-search-box">
-			<input class="ser-input" type="text" value="输入关键字搜索" disabled />
-		</view>
-		<!-- #endif -->
-
-		<view class="location-bar" @click="getCurrentLocation">
-			<text class="location-label">当前位置：</text>
-			<text class="location-value">{{ currentLocationText }}</text>
+		<!-- 顶部搜索和定位区域 -->
+		<view class="top-header">
+			<!-- 搜索框 -->
+			<view class="search-section">
+				<view class="search-box" @click="onSearch">
+					<text class="search-icon">🔍</text>
+					<input 
+						class="search-input" 
+						type="text" 
+						v-model="searchKeyword" 
+						placeholder="搜索商品" 
+						@confirm="handleSearch"
+						@focus="onSearch"
+						:disabled="false"
+					/>
+				</view>
+			</view>
+			<!-- 定位信息 -->
+			<view class="location-section" @click="getCurrentLocation">
+				<view class="location-wrapper">
+					<text class="location-icon">📍</text>
+					<text class="location-text">{{ currentLocationText }}</text>
+				</view>
+			</view>
 		</view>
 
 		<!-- 头部轮播 -->
 		<view class="carousel-section">
-			<!-- 标题栏和状态栏占位符 -->
-			<view class="titleNview-placing"></view>
-			<!-- 背景色区域 -->
-			<view class="titleNview-background" :style="{backgroundColor:titleNViewBackground}"></view>
 			<swiper class="carousel" circular @change="swiperChange">
-				<swiper-item v-for="(item, index) in advertiseList" :key="index" class="carousel-item" @click="navToAdvertisePage(item)">
+				<swiper-item v-for="(item, index) in advertiseList" :key="index" class="carousel-item"
+					@click="navToAdvertisePage(item)">
 					<image :src="item.pic" />
 				</swiper-item>
 			</swiper>
 			<!-- 自定义swiper指示器 -->
 			<view class="swiper-dots">
-				<text class="num">{{swiperCurrent+1}}</text>
+				<text class="num">{{ swiperCurrent + 1 }}</text>
 				<text class="sign">/</text>
-				<text class="num">{{swiperLength}}</text>
+				<text class="num">{{ swiperLength }}</text>
 			</view>
 		</view>
-		<!-- 头部功能区 -->
-		<view class="cate-section">
-			<view class="cate-item">
-				<image src="/static/temp/c3.png"></image>
-				<text>专题</text>
+		<!-- 快捷功能区 -->
+		<view class="quick-access-section">
+			<view class="quick-access-item" @click="navTo('/pages/category/category')">
+				<view class="quick-icon-wrapper">
+					<text class="quick-icon">📦</text>
+				</view>
+				<text class="quick-text">分类</text>
 			</view>
-			<view class="cate-item">
-				<image src="/static/temp/c5.png"></image>
-				<text>话题</text>
+			<view class="quick-access-item" @click="navTo('/pages/coupon/couponList')">
+				<view class="quick-icon-wrapper">
+					<text class="quick-icon">🎫</text>
+				</view>
+				<text class="quick-text">优惠券</text>
 			</view>
-			<view class="cate-item">
-				<image src="/static/temp/c6.png"></image>
-				<text>优选</text>
+			<view class="quick-access-item" @click="navTo('/pages/brand/list')">
+				<view class="quick-icon-wrapper">
+					<text class="quick-icon">🏷️</text>
+				</view>
+				<text class="quick-text">品牌</text>
 			</view>
-			<view class="cate-item">
-				<image src="/static/temp/c7.png"></image>
-				<text>特惠</text>
+			<view class="quick-access-item" @click="navTo('/pages/product/newProductList')">
+				<view class="quick-icon-wrapper">
+					<text class="quick-icon">✨</text>
+				</view>
+				<text class="quick-text">新品</text>
 			</view>
 		</view>
 
 		<!-- 品牌制造商直供 -->
-		<view class="f-header m-t" @click="navToRecommendBrandPage()">
-			<image src="/static/icon_home_brand.png"></image>
-			<view class="tit-box">
-				<text class="tit">品牌制造商直供</text>
-				<text class="tit2">工厂直达消费者，剔除品牌溢价</text>
-			</view>
-			<text class="yticon icon-you"></text>
-		</view>
-
-		<view class="guess-section">
-			<view v-for="(item, index) in brandList" :key="index" class="guess-item" @click="navToBrandDetailPage(item)">
-				<view class="image-wrapper-brand">
-					<image :src="item.logo" mode="aspectFit"></image>
+		<view class="section-card">
+			<view class="section-header" @click="navToRecommendBrandPage()">
+				<view class="section-title-wrapper">
+					<text class="section-icon">🏭</text>
+					<view class="section-title-box">
+						<text class="section-title">品牌制造商直供</text>
+						<text class="section-subtitle">工厂直达消费者，剔除品牌溢价</text>
+					</view>
 				</view>
-				<text class="title clamp">{{item.name}}</text>
-				<text class="title2">商品数量：{{item.productCount}}</text>
+				<text class="section-more">更多 ></text>
 			</view>
-		</view>
-
-		<!-- 秒杀专区 -->
-		<view class="f-header m-t" v-if="homeFlashPromotion!==null">
-			<image src="/static/icon_flash_promotion.png"></image>
-			<view class="tit-box">
-				<text class="tit">秒杀专区</text>
-				<text class="tit2">下一场 {{homeFlashPromotion.nextStartTime | formatTime}} 开始</text>
-			</view>
-			<view class="tit-box">
-				<text class="tit2" style="text-align: right;">本场结束剩余：</text>
-				<view style="text-align: right;">
-					<text class="hour timer">{{cutDownTime.endHour}}</text>
-					<text>:</text>
-					<text class="minute timer">{{cutDownTime.endMinute}}</text>
-					<text>:</text>
-					<text class="second timer">{{cutDownTime.endSecond}}</text>
-				</view>
-			</view>
-			<text class="yticon icon-you" v-show="false"></text>
-		</view>
-
-		<view class="guess-section">
-			<view v-for="(item, index) in homeFlashPromotion.productList" :key="index" class="guess-item" @click="navToDetailPage(item)">
-				<view class="image-wrapper">
-					<image :src="item.pic" mode="aspectFill"></image>
-				</view>
-				<text class="title clamp">{{item.name}}</text>
-				<text class="title2 clamp">{{item.subTitle}}</text>
-				<text class="price">￥{{item.price}}</text>
-			</view>
-		</view>
-
-		<!-- 新鲜好物 -->
-		<view class="f-header m-t" @click="navToNewProudctListPage()">
-			<image src="/static/icon_new_product.png"></image>
-			<view class="tit-box">
-				<text class="tit">新鲜好物</text>
-				<text class="tit2">为你寻觅世间好物</text>
-			</view>
-			<text class="yticon icon-you"></text>
-		</view>
-		<view class="seckill-section">
-			<scroll-view class="floor-list" scroll-x>
-				<view class="scoll-wrapper">
-					<view v-for="(item, index) in newProductList" :key="index" class="floor-item" @click="navToDetailPage(item)">
-						<image :src="item.pic" mode="aspectFill"></image>
-						<text class="title clamp">{{item.name}}</text>
-						<text class="title2 clamp">{{item.subTitle}}</text>
-						<text class="price">￥{{item.price}}</text>
+			<scroll-view class="brand-scroll" scroll-x>
+				<view class="brand-list">
+					<view v-for="(item, index) in brandList" :key="index" class="brand-item"
+						@click="navToBrandDetailPage(item)">
+						<view class="brand-image-wrapper">
+							<image :src="item.logo" mode="aspectFit"></image>
+						</view>
+						<text class="brand-name clamp">{{ item.name }}</text>
+						<text class="brand-count">{{ item.productCount }}件商品</text>
 					</view>
 				</view>
 			</scroll-view>
 		</view>
 
-		<!-- 人气推荐楼层 -->
-		<view class="f-header m-t" @click="navToHotProudctListPage()">
-			<image src="/static/icon_hot_product.png"></image>
-			<view class="tit-box">
-				<text class="tit">人气推荐</text>
-				<text class="tit2">大家都赞不绝口的</text>
+		<!-- 秒杀专区 -->
+		<view class="section-card flash-section" v-if="homeFlashPromotion !== null">
+			<view class="section-header flash-header">
+				<view class="section-title-wrapper">
+					<text class="section-icon flash-icon">⚡</text>
+					<view class="section-title-box">
+						<text class="section-title flash-title">限时秒杀</text>
+						<text class="section-subtitle">下一场 {{ homeFlashPromotion.nextStartTime | formatTime }} 开始</text>
+					</view>
+				</view>
+				<view class="countdown-box">
+					<text class="countdown-label">距结束</text>
+					<view class="countdown-timer">
+						<text class="timer-item">{{ String(cutDownTime.endHour).padStart(2, '0') }}</text>
+						<text class="timer-separator">:</text>
+						<text class="timer-item">{{ String(cutDownTime.endMinute).padStart(2, '0') }}</text>
+						<text class="timer-separator">:</text>
+						<text class="timer-item">{{ String(cutDownTime.endSecond).padStart(2, '0') }}</text>
+					</view>
+				</view>
 			</view>
-			<text class="yticon icon-you"></text>
+			<scroll-view class="product-scroll" scroll-x>
+				<view class="product-list-horizontal">
+					<view v-for="(item, index) in homeFlashPromotion.productList" :key="index" class="product-item-horizontal"
+						@click="navToDetailPage(item)">
+						<view class="product-image-wrapper">
+							<image :src="item.pic" mode="aspectFill"></image>
+							<view class="flash-badge">秒杀</view>
+						</view>
+						<view class="product-info">
+							<text class="product-price">￥{{ item.price }}</text>
+							<text class="product-name clamp">{{ item.name }}</text>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
 		</view>
 
-		<view class="hot-section">
-			<view v-for="(item, index) in hotProductList" :key="index" class="guess-item" @click="navToDetailPage(item)">
-				<view class="image-wrapper">
-					<image :src="item.pic" mode="aspectFill"></image>
+		<!-- 新鲜好物 -->
+		<view class="section-card">
+			<view class="section-header" @click="navToNewProudctListPage()">
+				<view class="section-title-wrapper">
+					<text class="section-icon">🆕</text>
+					<view class="section-title-box">
+						<text class="section-title">新鲜好物</text>
+						<text class="section-subtitle">为你寻觅世间好物</text>
+					</view>
 				</view>
-				<view class="txt">
-					<text class="title clamp">{{item.name}}</text>
-					<text class="title2">{{item.subTitle}}</text>
-					<text class="price">￥{{item.price}}</text>
+				<text class="section-more">更多 ></text>
+			</view>
+			<scroll-view class="product-scroll" scroll-x>
+				<view class="product-list-horizontal">
+					<view v-for="(item, index) in newProductList" :key="index" class="product-item-horizontal"
+						@click="navToDetailPage(item)">
+						<view class="product-image-wrapper">
+							<image :src="item.pic" mode="aspectFill"></image>
+							<view class="new-badge">新品</view>
+						</view>
+						<view class="product-info">
+							<text class="product-name clamp">{{ item.name }}</text>
+							<text class="product-subtitle clamp">{{ item.subTitle }}</text>
+							<text class="product-price">￥{{ item.price }}</text>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+
+		<!-- 人气推荐 -->
+		<view class="section-card">
+			<view class="section-header" @click="navToHotProudctListPage()">
+				<view class="section-title-wrapper">
+					<text class="section-icon">🔥</text>
+					<view class="section-title-box">
+						<text class="section-title">人气推荐</text>
+						<text class="section-subtitle">大家都赞不绝口的</text>
+					</view>
+				</view>
+				<text class="section-more">更多 ></text>
+			</view>
+			<view class="hot-product-grid">
+				<view v-for="(item, index) in hotProductList" :key="index" class="hot-product-item"
+					@click="navToDetailPage(item)">
+					<view class="hot-product-image">
+						<image :src="item.pic" mode="aspectFill"></image>
+						<view class="hot-badge">热销</view>
+					</view>
+					<view class="hot-product-content">
+						<text class="hot-product-name clamp">{{ item.name }}</text>
+						<text class="hot-product-subtitle clamp">{{ item.subTitle }}</text>
+						<view class="hot-product-footer">
+							<text class="hot-product-price">￥{{ item.price }}</text>
+							<text class="hot-product-tag">热卖中</text>
+						</view>
+					</view>
 				</view>
 			</view>
 		</view>
 
-		<!-- 猜你喜欢-->
-		<view class="f-header m-t">
-			<image src="/static/icon_recommend_product.png"></image>
-			<view class="tit-box">
-				<text class="tit">猜你喜欢</text>
-				<text class="tit2">你喜欢的都在这里了</text>
-			</view>
-			<text class="yticon icon-you" v-show="false"></text>
-		</view>
-
-		<view class="guess-section">
-			<view v-for="(item, index) in recommendProductList" :key="index" class="guess-item" @click="navToDetailPage(item)">
-				<view class="image-wrapper">
-					<image :src="item.pic" mode="aspectFill"></image>
+		<!-- 猜你喜欢 -->
+		<view class="section-card">
+			<view class="section-header">
+				<view class="section-title-wrapper">
+					<text class="section-icon">❤️</text>
+					<view class="section-title-box">
+						<text class="section-title">猜你喜欢</text>
+						<text class="section-subtitle">为你精心推荐</text>
+					</view>
 				</view>
-				<text class="title clamp">{{item.name}}</text>
-				<text class="title2 clamp">{{item.subTitle}}</text>
-				<text class="price">￥{{item.price}}</text>
 			</view>
+			<view class="product-grid">
+				<view v-for="(item, index) in recommendProductList" :key="index" class="product-card"
+					@click="navToDetailPage(item)">
+					<view class="product-image-container">
+						<image :src="item.pic" mode="aspectFill"></image>
+					</view>
+					<view class="product-card-content">
+						<text class="product-card-name clamp">{{ item.name }}</text>
+						<text class="product-card-subtitle clamp">{{ item.subTitle }}</text>
+						<view class="product-card-footer">
+							<text class="product-card-price">￥{{ item.price }}</text>
+							<text class="product-card-sale" v-if="item.sale">已售{{ item.sale }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			<uni-load-more :status="loadingType"></uni-load-more>
 		</view>
-		<uni-load-more :status="loadingType"></uni-load-more>
 	</view>
 </template>
 
 <script>
-	import {
-		fetchContent,
-		fetchRecommendProductList,
-		fetchLocationAddress
-	} from '@/api/home.js';
-	import {
-		formatDate
-	} from '@/utils/date';
-	import uniLoadMore from '@/components/uni-load-more/uni-load-more.vue';
-	export default {
-		components: {
-			uniLoadMore	
-		},
-		data() {
+import {
+	fetchContent,
+	fetchRecommendProductList,
+	fetchLocationAddress
+} from '@/api/home.js'
+import {
+	formatDate
+} from '@/utils/date'
+import uniLoadMore from '@/components/uni-load-more/uni-load-more.vue'
+export default {
+	components: {
+		uniLoadMore
+	},
+	data () {
+		return {
+
+			swiperCurrent: 0,
+			swiperLength: 0,
+			carouselList: [],
+			goodsList: [],
+			advertiseList: [],
+			brandList: [],
+			homeFlashPromotion: [],
+			newProductList: [],
+			hotProductList: [],
+			recommendProductList: [],
+			recommendParams: {
+				pageNum: 1,
+				pageSize: 4
+			},
+			loadingType: 'more',
+			currentLocation: null,
+			currentLocationText: '点击获取定位',
+			searchKeyword: ''
+		}
+	},
+	onLoad () {
+		this.loadData()
+	},
+	//下拉刷新
+	onPullDownRefresh () {
+		this.recommendParams.pageNum = 1
+		this.loadData()
+	},
+	//加载更多
+	onReachBottom () {
+		this.recommendParams.pageNum++
+		this.loadingType = 'loading'
+		fetchRecommendProductList(this.recommendParams).then(response => {
+			let addProductList = response.data
+			if (response.data.length === 0) {
+				//没有更多了
+				this.recommendParams.pageNum--
+				this.loadingType = 'nomore'
+			} else {
+				this.recommendProductList = this.recommendProductList.concat(addProductList)
+				this.loadingType = 'more'
+			}
+		})
+	},
+	computed: {
+		cutDownTime () {
+			let endTime = new Date(this.homeFlashPromotion.endTime)
+			let endDateTime = new Date()
+			let startDateTime = new Date()
+			endDateTime.setHours(endTime.getHours())
+			endDateTime.setMinutes(endTime.getMinutes())
+			endDateTime.setSeconds(endTime.getSeconds())
+			let offsetTime = (endDateTime.getTime() - startDateTime.getTime())
+			let endHour = Math.floor(offsetTime / (60 * 60 * 1000))
+			let offsetMinute = offsetTime % (60 * 60 * 1000)
+			let endMinute = Math.floor(offsetMinute / (60 * 1000))
+			let offsetSecond = offsetTime % (60 * 1000)
+			let endSecond = Math.floor(offsetSecond / 1000)
 			return {
-				titleNViewBackground: '',
-				titleNViewBackgroundList: ['rgb(203, 87, 60)', 'rgb(205, 215, 218)'],
-				swiperCurrent: 0,
-				swiperLength: 0,
-				carouselList: [],
-				goodsList: [],
-				advertiseList: [],
-				brandList: [],
-				homeFlashPromotion: [],
-				newProductList: [],
-				hotProductList: [],
-				recommendProductList: [],
-				recommendParams: {
-					pageNum: 1,
-					pageSize: 4
+				endHour: endHour,
+				endMinute: endMinute,
+				endSecond: endSecond
+			}
+		}
+	},
+	filters: {
+		formatTime (time) {
+			if (time == null || time === '') {
+				return 'N/A'
+			}
+			let date = new Date(time)
+			return formatDate(date, 'hh:mm:ss')
+		},
+	},
+	methods: {
+		/**
+		 * 加载数据
+		 */
+		async loadData () {
+			fetchContent().then(response => {
+				console.log("onLoad", response.data)
+				this.getCurrentLocation()
+				this.advertiseList = response.data.advertiseList
+				this.swiperLength = this.advertiseList.length
+
+				this.brandList = response.data.brandList
+				this.homeFlashPromotion = response.data.homeFlashPromotion
+				this.newProductList = response.data.newProductList
+				this.hotProductList = response.data.hotProductList
+				fetchRecommendProductList(this.recommendParams).then(response => {
+					this.recommendProductList = response.data
+					uni.stopPullDownRefresh()
+				})
+			})
+		},
+		//轮播图切换修改背景色
+		swiperChange (e) {
+			const index = e.detail.current
+			this.swiperCurrent = index
+		},
+		//商品详情页
+		navToDetailPage (item) {
+			let id = item.id
+			uni.navigateTo({
+				url: `/pages/product/product?id=${id}`
+			})
+		},
+		//广告详情页
+		navToAdvertisePage (item) {
+			let id = item.id
+			console.log("navToAdvertisePage", item)
+		},
+		//品牌详情页
+		navToBrandDetailPage (item) {
+			let id = item.id
+			uni.navigateTo({
+				url: `/pages/brand/brandDetail?id=${id}`
+			})
+		},
+		//推荐品牌列表页
+		navToRecommendBrandPage () {
+			uni.navigateTo({
+				url: `/pages/brand/list`
+			})
+		},
+		//新鲜好物列表页
+		navToNewProudctListPage () {
+			uni.navigateTo({
+				url: `/pages/product/newProductList`
+			})
+		},
+		//人气推荐列表页
+		navToHotProudctListPage () {
+			uni.navigateTo({
+				url: `/pages/product/hotProductList`
+			})
+		},
+		getCurrentLocation () {
+			uni.getLocation({
+				type: 'wgs84',
+				success: async (res) => {
+					this.currentLocation = res
+					const lat = Number(res.latitude) || 0
+					const lng = Number(res.longitude) || 0
+					const displayName =
+						(await this.fetchAddressByLngLat(lng, lat)) ||
+						`${lat.toFixed(4)}, ${lng.toFixed(4)}`
+					this.currentLocationText = displayName
+					this.$api.msg(`当前位置：${displayName}`)
 				},
-				loadingType:'more',
-				currentLocation: null,
-				currentLocationText: '点击获取定位'
-			};
-		},
-		onLoad() {
-			this.loadData();
-		},
-		//下拉刷新
-		onPullDownRefresh(){
-			this.recommendParams.pageNum=1;
-			this.loadData();
-		},
-		//加载更多
-		onReachBottom(){
-			this.recommendParams.pageNum++;
-			this.loadingType = 'loading';
-			fetchRecommendProductList(this.recommendParams).then(response => {
-				let addProductList = response.data;
-				if(response.data.length===0){
-					//没有更多了
-					this.recommendParams.pageNum--;
-					this.loadingType = 'nomore';
-				}else{
-					this.recommendProductList = this.recommendProductList.concat(addProductList);
-					this.loadingType = 'more';
+				fail: (err) => {
+					// 定位失败，静默处理
+					this.$api.msg('定位失败，请检查浏览器权限或使用 HTTPS')
+					this.currentLocationText = '定位失败，点击重试'
 				}
 			})
 		},
-		computed: {
-			cutDownTime() {
-				let endTime = new Date(this.homeFlashPromotion.endTime);
-				let endDateTime = new Date();
-				let startDateTime = new Date();
-				endDateTime.setHours(endTime.getHours());
-				endDateTime.setMinutes(endTime.getMinutes());
-				endDateTime.setSeconds(endTime.getSeconds());
-				let offsetTime = (endDateTime.getTime() - startDateTime.getTime());
-				let endHour = Math.floor(offsetTime / (60 * 60 * 1000));
-				let offsetMinute = offsetTime % (60 * 60 * 1000);
-				let endMinute = Math.floor(offsetMinute / (60 * 1000));
-				let offsetSecond = offsetTime % (60 * 1000);
-				let endSecond = Math.floor(offsetSecond / 1000);
-				return {
-					endHour: endHour,
-					endMinute: endMinute,
-					endSecond: endSecond
-				}
-			}
+		// 搜索框点击/聚焦
+		onSearch () {
+			// 跳转到搜索页面
+			uni.navigateTo({
+				url: `/pages/search/search${this.searchKeyword ? '?keyword=' + encodeURIComponent(this.searchKeyword.trim()) : ''}`
+			})
 		},
-		filters: {
-			formatTime(time) {
-				if (time == null || time === '') {
-					return 'N/A';
-				}
-				let date = new Date(time);
-				return formatDate(date, 'hh:mm:ss')
-			},
+		// 搜索商品（回车或确认搜索）
+		handleSearch () {
+			const keyword = this.searchKeyword ? this.searchKeyword.trim() : '';
+			// 跳转到搜索页面并传递搜索关键词
+			uni.navigateTo({
+				url: `/pages/search/search${keyword ? '?keyword=' + encodeURIComponent(keyword) : ''}`
+			})
 		},
-		methods: {
-			/**
-			 * 加载数据
-			 */
-			async loadData() {
-				fetchContent().then(response => {
-					console.log("onLoad", response.data);
-					this.getCurrentLocation();
-					this.advertiseList = response.data.advertiseList;
-					this.swiperLength = this.advertiseList.length;
-					this.titleNViewBackground = this.titleNViewBackgroundList[0];
-					this.brandList = response.data.brandList;
-					this.homeFlashPromotion = response.data.homeFlashPromotion;
-					this.newProductList = response.data.newProductList;
-					this.hotProductList = response.data.hotProductList;
-					fetchRecommendProductList(this.recommendParams).then(response => {
-						this.recommendProductList = response.data;
-						uni.stopPullDownRefresh();
-					})
-				});
-			},
-			//轮播图切换修改背景色
-			swiperChange(e) {
-				const index = e.detail.current;
-				this.swiperCurrent = index;
-				let changeIndex = index % this.titleNViewBackgroundList.length;
-				this.titleNViewBackground = this.titleNViewBackgroundList[changeIndex];
-			},
-			//商品详情页
-			navToDetailPage(item) {
-				let id = item.id;
-				uni.navigateTo({
-					url: `/pages/product/product?id=${id}`
-				})
-			},
-			//广告详情页
-			navToAdvertisePage(item) {
-				let id = item.id;
-				console.log("navToAdvertisePage",item)
-			},
-			//品牌详情页
-			navToBrandDetailPage(item) {
-				let id = item.id;
-				uni.navigateTo({
-					url: `/pages/brand/brandDetail?id=${id}`
-				})
-			},
-			//推荐品牌列表页
-			navToRecommendBrandPage() {
-				uni.navigateTo({
-					url: `/pages/brand/list`
-				})
-			},
-			//新鲜好物列表页
-			navToNewProudctListPage() {
-				uni.navigateTo({
-					url: `/pages/product/newProductList`
-				})
-			},
-			//人气推荐列表页
-			navToHotProudctListPage() {
-				uni.navigateTo({
-					url: `/pages/product/hotProductList`
-				})
-			},
-			getCurrentLocation() {
-				uni.getLocation({
-					type: 'wgs84',
-					success: async (res) => {
-						this.currentLocation = res
-						const lat = Number(res.latitude) || 0
-						const lng = Number(res.longitude) || 0
-						const displayName =
-							(await this.fetchAddressByLngLat(lng, lat)) ||
-							`${lat.toFixed(4)}, ${lng.toFixed(4)}`
-						this.currentLocationText = displayName
-						this.$api.msg(`当前位置：${displayName}`)
-					},
-					fail: (err) => {
-						console.error('getCurrentLocation fail:', err)
-						this.$api.msg('定位失败，请检查浏览器权限或使用 HTTPS')
-						this.currentLocationText = '定位失败，点击重试'
+		// 导航跳转
+		navTo (url) {
+			uni.navigateTo({
+				url: url
+			})
+		},
+		async fetchAddressByLngLat (lng, lat) {
+			try {
+				const response = await fetchLocationAddress({ lat, lng })
+				const payload = response?.data ?? response ?? {}
+				const province = payload.province || ''
+				const city = payload.city || ''
+				
+				// 只显示省市信息
+				if (province && city) {
+					// 如果省和市相同（如直辖市），只显示市
+					if (province === city || city.includes(province)) {
+						return city
 					}
-				})
-			},
-			async fetchAddressByLngLat(lng, lat) {
-				try {
-					const response = await fetchLocationAddress({ lat, lng })
-					const payload = response?.data ?? response ?? {}
-					return (
-						payload.district ||
-						payload.city ||
-						payload.province ||
-						payload.formattedAddress ||
-						''
-					)
-				} catch (error) {
-					console.error('fetchAddressByLngLat error:', error)
-					return ''
+					// 否则显示 "省 市"
+					return `${province} ${city}`
+				} else if (city) {
+					return city
+				} else if (province) {
+					return province
 				}
-			},
-		},
-		// #ifndef MP
-		// 标题栏input搜索框点击
-		onNavigationBarSearchInputClicked: async function(e) {
-			this.$api.msg('点击了搜索框');
-		},
-		//点击导航栏 buttons 时触发
-		onNavigationBarButtonTap(e) {
-			const index = e.index;
-			if (index === 0) {
-				this.getCurrentLocation();
-			} else if (index === 1) {
-				// #ifdef APP-PLUS
-				const pages = getCurrentPages();
-				const page = pages[pages.length - 1];
-				const currentWebview = page.$getAppWebview();
-				currentWebview.hideTitleNViewButtonRedDot({
-					index
-				});
-				// #endif
-				uni.navigateTo({
-					url: '/pages/notice/notice'
-				})
+				return ''
+			} catch (error) {
+				// 地址解析失败，返回空字符串
+				return ''
 			}
-		}
-		// #endif
-	}
+		},
+	},
+	// 导航栏相关功能已移除
+}
 </script>
 
 <style lang="scss">
-	/* #ifdef MP */
-	.mp-search-box {
-		position: absolute;
-		left: 0;
-		top: 30upx;
-		z-index: 9999;
+// 定义主题色和通用变量
+$primary-color: #fa436a;
+$bg-color: #f5f5f5;
+$card-bg: #ffffff;
+$text-primary: #333333;
+$text-secondary: #666666;
+$text-light: #999999;
+$border-color: #eeeeee;
+$shadow: 0 2upx 12upx rgba(0, 0, 0, 0.08);
+
+/* 顶部搜索和定位区域 */
+.top-header {
+	background: transparent;
+	padding: 20upx 30upx 30upx;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+.search-section {
+	margin-bottom: 20upx;
+}
+
+.search-box {
+	display: flex;
+	align-items: center;
+	height: 80upx;
+	padding: 0 30upx;
+	background: rgba(255, 255, 255, 0.95);
+	border-radius: 40upx;
+	box-shadow: 0 4upx 12upx rgba(0, 0, 0, 0.1);
+}
+
+.search-icon {
+	font-size: 32upx;
+	margin-right: 16upx;
+	flex-shrink: 0;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 28upx;
+	color: $text-primary;
+	background: transparent;
+	border: none;
+	outline: none;
+}
+
+.search-placeholder {
+	flex: 1;
+	font-size: 28upx;
+	color: $text-secondary;
+}
+
+.location-section {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	padding: 12upx 0;
+}
+
+.location-wrapper {
+	display: inline-flex;
+	align-items: center;
+	padding: 8upx 20upx;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 30upx;
+	backdrop-filter: blur(10upx);
+	box-shadow: 0 2upx 8upx rgba(0, 0, 0, 0.1);
+}
+
+.location-icon {
+	font-size: 28upx;
+	margin-right: 8upx;
+	flex-shrink: 0;
+}
+
+.location-text {
+	font-size: 26upx;
+	color: #333;
+	max-width: 500upx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 500;
+}
+
+page {
+	background: $bg-color;
+}
+
+/* 轮播图区域 */
+.carousel-section {
+	position: relative;
+	margin: 20upx 30upx;
+	border-radius: 20upx;
+	overflow: hidden;
+	box-shadow: $shadow;
+}
+
+.carousel {
+	width: 100%;
+	height: 360upx;
+
+	.carousel-item {
 		width: 100%;
-		padding: 0 80upx;
-
-		.ser-input {
-			flex: 1;
-			height: 56upx;
-			line-height: 56upx;
-			text-align: center;
-			font-size: 28upx;
-			color: $font-color-base;
-			border-radius: 20px;
-			background: rgba(255, 255, 255, .6);
-		}
+		height: 100%;
+		overflow: hidden;
 	}
 
-	page {
-		.cate-section {
-			position: relative;
-			z-index: 5;
-			border-radius: 16upx 16upx 0 0;
-			margin-top: -20upx;
-		}
-
-		.carousel-section {
-			padding: 0;
-
-			.titleNview-placing {
-				padding-top: 0;
-				height: 0;
-			}
-
-			.carousel {
-				.carousel-item {
-					padding: 0;
-				}
-			}
-
-			.swiper-dots {
-				left: 45upx;
-				bottom: 40upx;
-			}
-		}
+	image {
+		width: 100%;
+		height: 100%;
 	}
+}
 
-	/* #endif */
+.swiper-dots {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: absolute;
+	right: 30upx;
+	bottom: 20upx;
+	padding: 8upx 20upx;
+	background: rgba(0, 0, 0, 0.4);
+	border-radius: 30upx;
+	backdrop-filter: blur(10upx);
 
-
-	page {
-		background: #f5f5f5;
-	}
-
-	.m-t {
-		margin-top: 16upx;
-	}
-
-	/* 头部 轮播图 */
-	.location-bar {
-		display: flex;
-		align-items: center;
-		padding: 16upx 32upx;
-		background: #fff;
-		font-size: $font-base;
-		color: $font-color-dark;
-	}
-
-	.location-label {
-		color: $font-color-light;
-		margin-right: 8upx;
-	}
-
-	.location-value {
-		flex: 1;
+	.num {
+		font-size: 24upx;
+		color: #fff;
 		font-weight: 500;
-		color: $uni-color-primary;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 
-	.carousel-section {
-		position: relative;
-		padding-top: 10px;
-
-		.titleNview-placing {
-			height: var(--status-bar-height);
-			padding-top: 44px;
-			box-sizing: content-box;
-		}
-
-		.titleNview-background {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 426upx;
-			transition: .4s;
-		}
+	.sign {
+		margin: 0 4upx;
+		font-size: 20upx;
+		color: rgba(255, 255, 255, 0.8);
 	}
+}
 
-	.carousel {
+/* 快捷功能区 */
+.quick-access-section {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	padding: 40upx 30upx;
+	background: $card-bg;
+	margin: 0 30upx 20upx;
+	border-radius: 20upx;
+	box-shadow: $shadow;
+}
+
+.quick-access-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+}
+
+.quick-icon-wrapper {
+	width: 100upx;
+	height: 100upx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	border-radius: 20upx;
+	margin-bottom: 16upx;
+	box-shadow: 0 4upx 12upx rgba(102, 126, 234, 0.3);
+}
+
+.quick-icon {
+	font-size: 48upx;
+}
+
+.quick-text {
+	font-size: 24upx;
+	color: $text-primary;
+	font-weight: 500;
+}
+
+/* 通用区块卡片 */
+.section-card {
+	background: $card-bg;
+	margin: 0 30upx 30upx;
+	border-radius: 20upx;
+	box-shadow: $shadow;
+	overflow: hidden;
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 30upx;
+	border-bottom: 1upx solid $border-color;
+}
+
+.section-title-wrapper {
+	display: flex;
+	align-items: center;
+	flex: 1;
+}
+
+.section-icon {
+	font-size: 40upx;
+	margin-right: 20upx;
+}
+
+.section-title-box {
+	display: flex;
+	flex-direction: column;
+}
+
+.section-title {
+	font-size: 32upx;
+	font-weight: 600;
+	color: $text-primary;
+	line-height: 1.4;
+	margin-bottom: 6upx;
+}
+
+.section-subtitle {
+	font-size: 24upx;
+	color: $text-light;
+}
+
+.section-more {
+	font-size: 26upx;
+	color: $text-secondary;
+}
+
+/* 秒杀专区特殊样式 */
+.flash-section {
+	background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.flash-header {
+	border-bottom: 1upx solid rgba(255, 255, 255, 0.2);
+}
+
+.flash-icon {
+	color: #fff;
+}
+
+.flash-title {
+	color: #fff;
+}
+
+.countdown-box {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+}
+
+.countdown-label {
+	font-size: 22upx;
+	color: rgba(255, 255, 255, 0.9);
+	margin-bottom: 8upx;
+}
+
+.countdown-timer {
+	display: flex;
+	align-items: center;
+}
+
+.timer-item {
+	display: inline-block;
+	min-width: 44upx;
+	height: 44upx;
+	line-height: 44upx;
+	text-align: center;
+	background: rgba(0, 0, 0, 0.3);
+	color: #fff;
+	font-size: 24upx;
+	font-weight: 600;
+	border-radius: 6upx;
+	padding: 0 8upx;
+}
+
+.timer-separator {
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 24upx;
+	margin: 0 4upx;
+}
+
+/* 品牌横向滚动 */
+.brand-scroll {
+	white-space: nowrap;
+	padding: 20upx 0;
+}
+
+.brand-list {
+	display: inline-flex;
+	padding: 0 30upx;
+}
+
+.brand-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 200upx;
+	margin-right: 30upx;
+	flex-shrink: 0;
+}
+
+.brand-image-wrapper {
+	width: 200upx;
+	height: 200upx;
+	border-radius: 16upx;
+	overflow: hidden;
+	background: $bg-color;
+	margin-bottom: 16upx;
+	box-shadow: 0 2upx 8upx rgba(0, 0, 0, 0.1);
+
+	image {
 		width: 100%;
-		height: 350upx;
-
-		.carousel-item {
-			width: 100%;
-			height: 100%;
-			padding: 0 28upx;
-			overflow: hidden;
-		}
-
-		image {
-			width: 100%;
-			height: 100%;
-			border-radius: 10upx;
-		}
+		height: 100%;
 	}
+}
 
-	.swiper-dots {
-		display: flex;
-		position: absolute;
-		left: 60upx;
-		bottom: 15upx;
-		width: 72upx;
-		height: 36upx;
-		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADDhn8LAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTMyIDc5LjE1OTI4NCwgMjAxNi8wNC8xOS0xMzoxMzo0MCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OTk4MzlBNjE0NjU1MTFFOUExNjRFQ0I3RTQ0NEExQjMiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTk4MzlBNjA0NjU1MTFFOUExNjRFQ0I3RTQ0NEExQjMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKFdpbmRvd3MpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6Q0E3RUNERkE0NjExMTFFOTg5NzI4MTM2Rjg0OUQwOEUiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6Q0E3RUNERkI0NjExMTFFOTg5NzI4MTM2Rjg0OUQwOEUiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4Gh5BPAAACTUlEQVR42uzcQW7jQAwFUdN306l1uWwNww5kqdsmm6/2MwtVCp8CosQtP9vg/2+/gY+DRAMBgqnjIp2PaCxCLLldpPARRIiFj1yBbMV+cHZh9PURRLQNhY8kgWyL/WDtwujjI8hoE8rKLqb5CDJaRMJHokC6yKgSCR9JAukmokIknCQJpLOIrJFwMsBJELFcKHwM9BFkLBMKFxNcBCHlQ+FhoocgpVwwnv0Xn30QBJGMC0QcaBVJiAMiec/dcwKuL4j1QMsVCXFAJE4s4NQA3K/8Y6DzO4g40P7UcmIBJxbEesCKWBDg8wWxHrAiFgT4fEGsB/CwIhYE+AeBAAdPLOcV8HRmWRDAiQVcO7GcV8CLM8uCAE4sQCDAlHcQ7x+ABQEEAggEEAggEEAggEAAgQACASAQQCCAQACBAAIBBAIIBBAIIBBAIABe4e9iAe/xd7EAJxYgEGDeO4j3EODp/cOCAE4sYMyJ5cwCHs4rCwI4sYBxJ5YzC84rCwKcXxArAuthQYDzC2JF0H49LAhwYUGsCFqvx5EF2T07dMaJBetx4cRyaqFtHJ8EIhK0i8OJBQxcECuCVutxJhCRoE0cZwMRyRcFefa/ffZBVPogePihhyCnbBhcfMFFEFM+DD4m+ghSlgmDkwlOgpAl4+BkkJMgZdk4+EgaSCcpVX7bmY9kgXQQU+1TgE0c+QJZUUz1b2T4SBbIKmJW+3iMj2SBVBWz+leVfCQLpIqYbp8b85EskIxyfIOfK5Sf+wiCRJEsllQ+oqEkQfBxmD8BBgA5hVjXyrBNUQAAAABJRU5ErkJggg==);
-		background-size: 100% 100%;
+.brand-name {
+	font-size: 26upx;
+	color: $text-primary;
+	font-weight: 500;
+	margin-bottom: 8upx;
+	text-align: center;
+}
 
-		.num {
-			width: 36upx;
-			height: 36upx;
-			border-radius: 50px;
-			font-size: 24upx;
-			color: #fff;
-			text-align: center;
-			line-height: 36upx;
-		}
+.brand-count {
+	font-size: 22upx;
+	color: $text-light;
+}
 
-		.sign {
-			position: absolute;
-			top: 0;
-			left: 50%;
-			line-height: 36upx;
-			font-size: 12upx;
-			color: #fff;
-			transform: translateX(-50%);
-		}
-	}
+/* 商品横向滚动 */
+.product-scroll {
+	white-space: nowrap;
+	padding: 20upx 0;
+}
 
-	/* 分类 */
-	.cate-section {
-		display: flex;
-		justify-content: space-around;
-		align-items: center;
-		flex-wrap: wrap;
-		padding: 30upx 22upx;
-		background: #fff;
+.product-list-horizontal {
+	display: inline-flex;
+	padding: 0 30upx;
+}
 
-		.cate-item {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			font-size: $font-sm + 2upx;
-			color: $font-color-dark;
-		}
+.product-item-horizontal {
+	display: flex;
+	flex-direction: column;
+	width: 280upx;
+	margin-right: 24upx;
+	flex-shrink: 0;
+	background: $card-bg;
+	border-radius: 16upx;
+	overflow: hidden;
+	box-shadow: 0 2upx 8upx rgba(0, 0, 0, 0.08);
+}
 
-		/* 原图标颜色太深,不想改图了,所以加了透明度 */
-		image {
-			width: 88upx;
-			height: 88upx;
-			margin-bottom: 14upx;
-			border-radius: 50%;
-			opacity: .7;
-			box-shadow: 4upx 4upx 20upx rgba(250, 67, 106, 0.3);
-		}
-	}
+.product-image-wrapper {
+	position: relative;
+	width: 100%;
+	height: 280upx;
+	background: $bg-color;
 
-	.ad-1 {
+	image {
 		width: 100%;
-		height: 210upx;
-		padding: 10upx 0;
-		background: #fff;
-
-		image {
-			width: 100%;
-			height: 100%;
-		}
+		height: 100%;
 	}
+}
 
-	/* 秒杀专区 */
-	.seckill-section {
-		padding: 4upx 30upx 24upx;
-		background: #fff;
+.flash-badge,
+.new-badge {
+	position: absolute;
+	top: 12upx;
+	left: 12upx;
+	padding: 6upx 16upx;
+	background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+	color: #fff;
+	font-size: 20upx;
+	border-radius: 20upx;
+	font-weight: 600;
+}
 
-		.s-header {
-			display: flex;
-			align-items: center;
-			height: 92upx;
-			line-height: 1;
+.new-badge {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
-			.s-img {
-				width: 140upx;
-				height: 30upx;
-			}
+.product-info {
+	padding: 20upx;
+	display: flex;
+	flex-direction: column;
+}
 
-			.tip {
-				font-size: $font-base;
-				color: $font-color-light;
-				margin: 0 20upx 0 40upx;
-			}
+.product-name {
+	font-size: 26upx;
+	color: $text-primary;
+	font-weight: 500;
+	margin-bottom: 8upx;
+	line-height: 1.4;
+}
 
-			.timer {
-				display: inline-block;
-				width: 40upx;
-				height: 36upx;
-				text-align: center;
-				line-height: 36upx;
-				margin-right: 14upx;
-				font-size: $font-sm+2upx;
-				color: #fff;
-				border-radius: 2px;
-				background: rgba(0, 0, 0, .8);
-			}
+.product-subtitle {
+	font-size: 22upx;
+	color: $text-light;
+	margin-bottom: 12upx;
+	line-height: 1.4;
+}
 
-			.icon-you {
-				font-size: $font-lg;
-				color: $font-color-light;
-				flex: 1;
-				text-align: right;
-			}
-		}
+.product-price {
+	font-size: 32upx;
+	color: $primary-color;
+	font-weight: 600;
+}
 
-		.floor-list {
-			white-space: nowrap;
-		}
+/* 人气推荐网格布局 */
+.hot-product-grid {
+	padding: 20upx 30upx 30upx;
+}
 
-		.scoll-wrapper {
-			display: flex;
-			align-items: flex-start;
-		}
+.hot-product-item {
+	display: flex;
+	flex-direction: row;
+	margin-bottom: 30upx;
+	background: $card-bg;
+	border-radius: 16upx;
+	overflow: hidden;
+	box-shadow: 0 2upx 8upx rgba(0, 0, 0, 0.06);
 
-		.floor-item {
-			width: 300upx;
-			margin-right: 20upx;
-			font-size: $font-sm+2upx;
-			color: $font-color-dark;
-			line-height: 1.8;
-
-			image {
-				width: 300upx;
-				height: 300upx;
-				border-radius: 6upx;
-			}
-
-			.price {
-				color: $uni-color-primary;
-			}
-		}
-
-		.title2 {
-			font-size: $font-sm;
-			color: $font-color-light;
-			line-height: 40upx;
-		}
+	&:last-child {
+		margin-bottom: 0;
 	}
+}
 
-	.f-header {
-		display: flex;
-		align-items: center;
-		height: 140upx;
-		padding: 6upx 30upx 8upx;
-		background: #fff;
+.hot-product-image {
+	position: relative;
+	width: 240upx;
+	height: 240upx;
+	flex-shrink: 0;
+	background: $bg-color;
 
-		image {
-			flex-shrink: 0;
-			width: 80upx;
-			height: 80upx;
-			margin-right: 20upx;
-		}
-
-		.tit-box {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-		}
-
-		.tit {
-			font-size: $font-lg +2upx;
-			color: #font-color-dark;
-			line-height: 1.3;
-		}
-
-		.tit2 {
-			font-size: $font-sm;
-			color: $font-color-light;
-		}
-
-		.icon-you {
-			font-size: $font-lg +2upx;
-			color: $font-color-light;
-		}
-
-		.timer {
-			display: inline-block;
-			width: 40upx;
-			height: 36upx;
-			text-align: center;
-			line-height: 36upx;
-			margin-right: 14upx;
-			font-size: $font-sm+2upx;
-			color: #fff;
-			border-radius: 2px;
-			background: rgba(0, 0, 0, .8);
-		}
-	}
-
-	/* 分类推荐楼层 */
-	.hot-floor {
+	image {
 		width: 100%;
-		overflow: hidden;
-		margin-bottom: 20upx;
-
-		.floor-img-box {
-			width: 100%;
-			height: 320upx;
-			position: relative;
-
-			&:after {
-				content: '';
-				position: absolute;
-				left: 0;
-				top: 0;
-				width: 100%;
-				height: 100%;
-				background: linear-gradient(rgba(255, 255, 255, .06) 30%, #f8f8f8);
-			}
-		}
-
-		.floor-img {
-			width: 100%;
-			height: 100%;
-		}
-
-		.floor-list {
-			white-space: nowrap;
-			padding: 20upx;
-			padding-right: 50upx;
-			border-radius: 6upx;
-			margin-top: -140upx;
-			margin-left: 30upx;
-			background: #fff;
-			box-shadow: 1px 1px 5px rgba(0, 0, 0, .2);
-			position: relative;
-			z-index: 1;
-		}
-
-		.scoll-wrapper {
-			display: flex;
-			align-items: flex-start;
-		}
-
-		.floor-item {
-			width: 180upx;
-			margin-right: 20upx;
-			font-size: $font-sm+2upx;
-			color: $font-color-dark;
-			line-height: 1.8;
-
-			image {
-				width: 180upx;
-				height: 180upx;
-				border-radius: 6upx;
-			}
-
-			.price {
-				color: $uni-color-primary;
-			}
-		}
-
-		.more {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex-direction: column;
-			flex-shrink: 0;
-			width: 180upx;
-			height: 180upx;
-			border-radius: 6upx;
-			background: #f3f3f3;
-			font-size: $font-base;
-			color: $font-color-light;
-
-			text:first-child {
-				margin-bottom: 4upx;
-			}
-		}
+		height: 100%;
 	}
+}
 
-	/* 猜你喜欢 */
-	.guess-section {
-		display: flex;
-		flex-wrap: wrap;
-		padding: 0 30upx;
-		background: #fff;
+.hot-badge {
+	position: absolute;
+	top: 12upx;
+	left: 12upx;
+	padding: 6upx 16upx;
+	background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+	color: #fff;
+	font-size: 20upx;
+	border-radius: 20upx;
+	font-weight: 600;
+}
 
-		.guess-item {
-			display: flex;
-			flex-direction: column;
-			width: 48%;
-			padding-bottom: 40upx;
+.hot-product-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	padding: 24upx;
+}
 
-			&:nth-child(2n+1) {
-				margin-right: 4%;
-			}
-		}
+.hot-product-name {
+	font-size: 28upx;
+	color: $text-primary;
+	font-weight: 500;
+	margin-bottom: 12upx;
+	line-height: 1.4;
+}
 
-		.image-wrapper {
-			width: 100%;
-			height: 330upx;
-			border-radius: 3px;
-			overflow: hidden;
+.hot-product-subtitle {
+	font-size: 24upx;
+	color: $text-light;
+	margin-bottom: 20upx;
+	line-height: 1.4;
+}
 
-			image {
-				width: 100%;
-				height: 100%;
-				opacity: 1;
-			}
-		}
-		
-		.image-wrapper-brand {
-			width: 100%;
-			height: 150upx;
-			border-radius: 3px;
-			overflow: hidden;
-		
-			image {
-				width: 100%;
-				height: 100%;
-				opacity: 1;
-			}
-		}
+.hot-product-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
 
-		.title {
-			font-size: $font-lg;
-			color: $font-color-dark;
-			line-height: 80upx;
-		}
+.hot-product-price {
+	font-size: 36upx;
+	color: $primary-color;
+	font-weight: 600;
+}
 
-		.title2 {
-			font-size: $font-sm;
-			color: $font-color-light;
-			line-height: 40upx;
-		}
+.hot-product-tag {
+	padding: 6upx 16upx;
+	background: rgba(250, 67, 106, 0.1);
+	color: $primary-color;
+	font-size: 20upx;
+	border-radius: 20upx;
+}
 
-		.price {
-			font-size: $font-lg;
-			color: $uni-color-primary;
-			line-height: 1;
-		}
+/* 猜你喜欢网格布局 */
+.product-grid {
+	display: flex;
+	flex-wrap: wrap;
+	padding: 20upx 20upx 30upx;
+	justify-content: space-between;
+}
+
+.product-card {
+	display: flex;
+	flex-direction: column;
+	width: 48%;
+	margin-bottom: 20upx;
+	background: $card-bg;
+	border-radius: 16upx;
+	overflow: hidden;
+	box-shadow: 0 2upx 8upx rgba(0, 0, 0, 0.06);
+	transition: transform 0.2s;
+
+	&:active {
+		transform: scale(0.98);
 	}
+}
 
-	.hot-section {
-		display: flex;
-		flex-wrap: wrap;
-		padding: 0 30upx;
-		background: #fff;
+.product-image-container {
+	width: 100%;
+	height: 320upx;
+	background: $bg-color;
+	overflow: hidden;
 
-		.guess-item {
-			display: flex;
-			flex-direction: row;
-			width: 100%;
-			padding-bottom: 40upx;
-		}
-
-		.image-wrapper {
-			width: 30%;
-			height: 250upx;
-			border-radius: 3px;
-			overflow: hidden;
-
-			image {
-				width: 100%;
-				height: 100%;
-				opacity: 1;
-			}
-		}
-
-		.title {
-			font-size: $font-lg;
-			color: $font-color-dark;
-			line-height: 80upx;
-		}
-
-		.title2 {
-			font-size: $font-sm;
-			color: $font-color-light;
-			line-height: 40upx;
-			height: 80upx;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			display: block;
-		}
-
-		.price {
-			font-size: $font-lg;
-			color: $uni-color-primary;
-			line-height: 80upx;
-		}
-
-		.txt {
-			width: 70%;
-			display: flex;
-			flex-direction: column;
-			padding-left: 40upx;
-		}
+	image {
+		width: 100%;
+		height: 100%;
 	}
+}
+
+.product-card-content {
+	padding: 20upx;
+	display: flex;
+	flex-direction: column;
+}
+
+.product-card-name {
+	font-size: 28upx;
+	color: $text-primary;
+	font-weight: 500;
+	margin-bottom: 8upx;
+	line-height: 1.4;
+}
+
+.product-card-subtitle {
+	font-size: 24upx;
+	color: $text-light;
+	margin-bottom: 16upx;
+	line-height: 1.4;
+}
+
+.product-card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.product-card-price {
+	font-size: 32upx;
+	color: $primary-color;
+	font-weight: 600;
+}
+
+.product-card-sale {
+	font-size: 22upx;
+	color: $text-light;
+}
+
+/* 文本截断 */
+.clamp {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
 </style>
+
+

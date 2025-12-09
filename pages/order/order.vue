@@ -16,41 +16,62 @@
 					<!-- 订单列表 -->
 					<view v-for="(item, index) in orderList" :key="index" class="order-item">
 						<view class="i-top b-b">
-							<text class="time" @click="showOrderDetail(item.id)">{{ item.createTime |
-								formatDateTime}}</text>
-							<text class="state" :style="{ color: '#fa436a' }">{{ item.status | formatStatus }}</text>
+							<view class="order-header">
+								<text class="order-sn">订单号：{{ item.orderSn || item.id }}</text>
+								<text class="state" :style="{ color: getStatusColor(item.status) }">{{ item.status | formatStatus }}</text>
+							</view>
+							<view class="order-time">
+								<text class="time">{{ item.createTime | formatDateTime }}</text>
 							<text v-if="item.status === 3 || item.status === 4" class="del-btn yticon icon-iconfontshanchu1"
 								@click="deleteOrder(item.id)"></text>
 						</view>
-						<view class="goods-box-single" v-for="(orderItem, itemIndex) in item.orderItemList"
-							:key="itemIndex">
+						</view>
+						
+						<!-- 商品列表 -->
+						<view class="goods-container">
+							<view 
+								class="goods-box-single" 
+								v-for="(orderItem, itemIndex) in item.orderItemList"
+								:key="itemIndex"
+								@click="showOrderDetail(item.id)"
+							>
 							<image class="goods-img" :src="orderItem.productPic" mode="aspectFill"></image>
 							<view class="right">
 								<text class="title clamp">{{ orderItem.productName }}</text>
 								<text class="attr-box">{{ orderItem.productAttr | formatProductAttr }} x
 									{{ orderItem.productQuantity }}</text>
-								<text class="price">{{ orderItem.productPrice }}</text>
+									<view class="price-row">
+										<text class="price">¥{{ orderItem.productPrice }}</text>
+										<button 
+											v-if="item.status == 3" 
+											class="comment-btn-small" 
+											@click.stop="goToComment(orderItem, item)"
+										>
+											评价
+										</button>
+									</view>
+								</view>
 							</view>
 						</view>
 
 						<view class="price-box">
-							共
-							<text class="num">{{ calcTotalQuantity(item) }}</text>
-							件商品 实付款
-							<text class="price">{{ item.payAmount }}</text>
+							<text class="total-label">共 <text class="num">{{ calcTotalQuantity(item) }}</text> 件商品</text>
+							<text class="price">实付款：¥{{ item.payAmount }}</text>
 						</view>
+						
 						<view class="action-box b-t" v-if="item.status == 0">
 							<button class="action-btn" @click="cancelOrder(item.id)">取消订单</button>
 							<button class="action-btn recom" @click="payOrder(item.id)">立即付款</button>
 						</view>
 						<view class="action-box b-t" v-if="item.status == 2">
 							<button class="action-btn" @click="applyRefund(item)">申请退款</button>
-							<button class="action-btn">查看物流</button>
+							<button class="action-btn" @click="showOrderDetail(item.id)">查看物流</button>
 							<button class="action-btn recom" @click="receiveOrder(item.id)">确认收货</button>
 						</view>
 						<view class="action-box b-t" v-if="item.status == 3">
 							<button class="action-btn" @click="applyRefund(item)">申请退款</button>
-							<button class="action-btn recom">评价商品</button>
+							<button class="action-btn recom" @click="goToCommentAll(item)">评价商品</button>
+							<button class="action-btn" @click="showOrderDetail(item.id)">再次购买</button>
 						</view>
 					</view>
 
@@ -453,6 +474,38 @@ export default {
 			}
 			return totalQuantity
 		},
+		// 获取状态颜色
+		getStatusColor(status) {
+			const colorMap = {
+				0: '#fa436a', // 待付款 - 红色
+				1: '#ff9500', // 待发货 - 橙色
+				2: '#007aff', // 待收货 - 蓝色
+				3: '#34c759', // 已完成 - 绿色
+				4: '#8e8e93'  // 已取消 - 灰色
+			}
+			return colorMap[status] || '#fa436a'
+		},
+		// 跳转到评价页面（单个商品）
+		goToComment(orderItem, order) {
+			const params = {
+				productId: orderItem.productId,
+				productName: orderItem.productName,
+				productPic: orderItem.productPic,
+				productAttribute: orderItem.productAttr || ''
+			}
+			const query = Object.keys(params).map(key => {
+				return `${key}=${encodeURIComponent(params[key])}`
+			}).join('&')
+			uni.navigateTo({
+				url: `/pages/order/comment?${query}`
+			})
+		},
+		// 跳转到评价页面（所有商品，跳转到订单详情页）
+		goToCommentAll(order) {
+			uni.navigateTo({
+				url: `/pages/order/orderDetail?orderId=${order.id}`
+			})
+		},
 	},
 }
 </script>
@@ -515,44 +568,56 @@ page,
 .order-item {
 	display: flex;
 	flex-direction: column;
-	padding-left: 30upx;
 	background: #fff;
-	margin-top: 16upx;
+	margin: 20upx 30upx;
+	border-radius: 16upx;
+	overflow: hidden;
+	box-shadow: 0 2upx 12upx rgba(0, 0, 0, 0.08);
 
 	.i-top {
-		display: flex;
-		align-items: center;
-		height: 80upx;
-		padding-right: 30upx;
+		padding: 20upx 30upx 20upx 0;
 		font-size: $font-base;
 		color: $font-color-dark;
 		position: relative;
 
-		.time {
-			flex: 1;
+		.order-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10upx;
+			
+			.order-sn {
+				font-size: 24upx;
+				color: $font-color-light;
 		}
 
 		.state {
-			color: $base-color;
+				font-size: 28upx;
+				font-weight: 500;
+			}
+		}
+		
+		.order-time {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			
+			.time {
+				font-size: 24upx;
+				color: $font-color-light;
+			}
 		}
 
 		.del-btn {
-			padding: 10upx 0 10upx 36upx;
+			padding: 10upx;
 			font-size: $font-lg;
 			color: $font-color-light;
-			position: relative;
-
-			&:after {
-				content: '';
-				width: 0;
-				height: 30upx;
-				border-left: 1px solid $border-color-dark;
-				position: absolute;
-				left: 20upx;
-				top: 50%;
-				transform: translateY(-50%);
-			}
 		}
+	}
+	
+	.goods-container {
+		background: #f8f8f8;
+		padding: 20upx 0;
 	}
 
 	/* 多条商品 */
@@ -578,41 +643,70 @@ page,
 	/* 单条商品 */
 	.goods-box-single {
 		display: flex;
-		padding: 20upx 0;
+		padding: 20upx 30upx;
+		background: #fff;
+		margin-bottom: 2upx;
+		position: relative;
 
 		.goods-img {
 			display: block;
-			width: 120upx;
-			height: 120upx;
+			width: 140upx;
+			height: 140upx;
+			border-radius: 8upx;
+			flex-shrink: 0;
 		}
 
 		.right {
 			flex: 1;
 			display: flex;
 			flex-direction: column;
-			padding: 0 30upx 0 24upx;
+			padding: 0 0 0 20upx;
 			overflow: hidden;
+			justify-content: space-between;
 
 			.title {
-				font-size: $font-base + 2upx;
+				font-size: 28upx;
 				color: $font-color-dark;
-				line-height: 1;
+				line-height: 1.4;
+				margin-bottom: 10upx;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+				overflow: hidden;
 			}
 
 			.attr-box {
-				font-size: $font-sm + 2upx;
+				font-size: 24upx;
 				color: $font-color-light;
-				padding: 10upx 12upx;
+				margin-bottom: 10upx;
+			}
+			
+			.price-row {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
 			}
 
 			.price {
-				font-size: $font-base + 2upx;
-				color: $font-color-dark;
-
-				&:before {
-					content: '￥';
-					font-size: $font-sm;
-					margin: 0 2upx 0 8upx;
+				font-size: 30upx;
+				color: $base-color;
+				font-weight: bold;
+			}
+			
+			.comment-btn-small {
+				width: 100upx;
+				height: 50upx;
+				line-height: 50upx;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: #fff;
+				border-radius: 25upx;
+				font-size: 24upx;
+				padding: 0;
+				margin: 0;
+				border: none;
+				
+				&::after {
+					border: none;
 				}
 			}
 		}
@@ -620,26 +714,25 @@ page,
 
 	.price-box {
 		display: flex;
-		justify-content: flex-end;
-		align-items: baseline;
+		justify-content: space-between;
+		align-items: center;
 		padding: 20upx 30upx;
-		font-size: $font-sm + 2upx;
+		font-size: 26upx;
+		background: #fff;
+
+		.total-label {
 		color: $font-color-light;
 
 		.num {
-			margin: 0 8upx;
 			color: $font-color-dark;
+				font-weight: 500;
+			}
 		}
 
 		.price {
-			font-size: $font-lg;
-			color: $font-color-dark;
-
-			&:before {
-				content: '￥';
-				font-size: $font-sm;
-				margin: 0 2upx 0 8upx;
-			}
+			font-size: 32upx;
+			color: $base-color;
+			font-weight: bold;
 		}
 	}
 
@@ -649,33 +742,33 @@ page,
 		align-items: center;
 		height: 100upx;
 		position: relative;
-		padding-right: 30upx;
+		padding: 0 30upx;
+		background: #fff;
+		gap: 20upx;
 	}
 
 	.action-btn {
-		width: 160upx;
-		height: 60upx;
+		min-width: 140upx;
+		height: 64upx;
 		margin: 0;
-		margin-left: 24upx;
-		padding: 0;
+		padding: 0 30upx;
 		text-align: center;
-		line-height: 60upx;
-		font-size: $font-sm + 2upx;
+		line-height: 64upx;
+		font-size: 26upx;
 		color: $font-color-dark;
 		background: #fff;
-		border-radius: 100px;
+		border: 1px solid #e5e5e5;
+		border-radius: 32upx;
+		box-sizing: border-box;
 
 		&:after {
-			border-radius: 100px;
+			border: none;
 		}
 
 		&.recom {
-			background: #fff9f9;
-			color: $base-color;
-
-			&:after {
-				border-color: #f7bcc8;
-			}
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: #fff;
+			border: none;
 		}
 	}
 }

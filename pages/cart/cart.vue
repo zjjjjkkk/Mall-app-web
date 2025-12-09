@@ -211,8 +211,10 @@
 					})
 					return;
 				}
+				// 对JSON字符串进行URL编码，确保特殊字符能正确传递
+				let cartIdsStr = encodeURIComponent(JSON.stringify(cartIds));
 				uni.navigateTo({
-					url: `/pages/order/createOrder?cartIds=${JSON.stringify(cartIds)}`
+					url: `/pages/order/createOrder?cartIds=${cartIdsStr}`
 				})
 			}
 		}

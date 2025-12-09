@@ -26,20 +26,6 @@
 			</view>
 		</view>
 
-		<!--  分享 -->
-		<view class="share-section" @click="share">
-			<view class="share-icon">
-				<text class="yticon icon-xingxing"></text>
-				返
-			</view>
-			<text class="tit">该商品分享可领49减10红包</text>
-			<text class="yticon icon-bangzhu1"></text>
-			<view class="share-btn">
-				立即分享
-				<text class="yticon icon-you"></text>
-			</view>
-
-		</view>
 
 		<view class="c-list">
 			<view class="c-row b-b" @click="toggleSpec">
@@ -78,24 +64,66 @@
 		</view>
 
 		<!-- 评价 -->
-		<view class="eva-section">
-			<view class="e-header">
-				<text class="tit">评价</text>
-				<text>(86)</text>
-				<text class="tip">好评率 100%</text>
-				<text class="yticon icon-you"></text>
+		<view class="comment-section">
+			<view class="comment-header" @click="viewAllComments">
+				<text class="comment-title">商品评价</text>
+				<text class="comment-count">({{ commentTotal }})</text>
+				<text class="comment-rate">好评率 {{ goodRate }}%</text>
+				<text class="icon-arrow">></text>
 			</view>
-			<view class="eva-box">
-				<image class="portrait" src="http://img3.imgtn.bdimg.com/it/u=1150341365,1327279810&fm=26&gp=0.jpg" mode="aspectFill"></image>
-				<view class="right">
-					<text class="name">Leo yo</text>
-					<text class="con">商品收到了，79元两件，质量不错，试了一下有点瘦，但是加个外罩很漂亮，我很喜欢</text>
-					<view class="bot">
-						<text class="attr">购买类型：XL 红色</text>
-						<text class="time">2019-04-01 19:21</text>
+			<view v-if="commentList === null" class="no-comment">
+				<text>加载中...</text>
+			</view>
+			<view v-else-if="commentList.length === 0" class="no-comment">
+				<text>暂无评价</text>
+			</view>
+			<template v-else>
+				<view v-for="(item, index) in commentList" :key="index" class="comment-item">
+				<view class="comment-user">
+					<image class="user-avatar" :src="item.memberIcon || '/static/default-avatar.png'" mode="aspectFill"></image>
+					<view class="user-info">
+						<text class="user-name">{{ item.memberNickName || '匿名用户' }}</text>
+						<view class="star-box">
+							<text 
+								v-for="(star, starIndex) in 5" 
+								:key="starIndex"
+								class="star"
+								:class="starIndex < item.star ? 'star-active' : 'star-inactive'"
+							>★</text>
+						</view>
+					</view>
+					<text class="comment-date">{{ item.createTime | formatDateTime }}</text>
+				</view>
+				<view class="comment-content">
+					<text>{{ item.content }}</text>
+				</view>
+				<view class="comment-pics" v-if="item.pics && getPicList(item.pics).length > 0">
+					<image 
+						v-for="(pic, picIndex) in getPicList(item.pics)" 
+						:key="picIndex"
+						:src="pic" 
+						mode="aspectFill"
+						class="comment-img"
+						@click="previewCommentPic(pic, getPicList(item.pics))"
+						@error="handleCommentImageError"
+						lazy-load
+					></image>
+				</view>
+				<!-- 管理员回复 -->
+				<view class="admin-reply-box" v-if="item.replayList && item.replayList.length > 0">
+					<view v-for="(replay, replayIndex) in item.replayList" :key="replayIndex" class="reply-box">
+						<view class="reply-title">
+							<text class="reply-name">{{ replay.memberNickName }}</text>
+							<text class="reply-tag" v-if="replay.type === 1">管理员</text>
+						</view>
+						<text class="reply-text">{{ replay.content }}</text>
 					</view>
 				</view>
+				<view class="comment-attr" v-if="item.productAttribute">
+					<text>{{ item.productAttribute }}</text>
+				</view>
 			</view>
+			</template>
 		</view>
 
 		<!-- 品牌信息 -->
@@ -216,12 +244,17 @@
 </template>
 
 <script>
-	import share from '@/components/share';
-	import {
-		fetchProductDetail
-	} from '@/api/product.js';
-	import {
-		addCartItem
+import share from '@/components/share';
+import {
+	fetchProductDetail
+} from '@/api/product.js';
+import { getCommentListByProductId, getCommentReplayList } from '@/api/comment.js';
+import logger from '@/utils/logger.js';
+import { getPicList } from '@/utils/imageUtil.js';
+import { handleApiError, showError } from '@/utils/errorHandler.js';
+import {
+	addCartItem,
+	fetchCartList
 	} from '@/api/cart.js';
 	import {
 		fetchProductCouponList,
@@ -294,7 +327,11 @@
 				attrList: [],
 				promotionTipList: [],
 				couponState: 0,
-				couponList: []
+				couponList: [],
+				// 评价相关
+				commentList: [],
+				commentTotal: 0,
+				goodRate: 100
 			};
 		},
 		async onLoad(options) {
@@ -338,7 +375,134 @@
 					this.initProductDesc();
 					this.handleReadHistory();
 					this.initProductCollection();
+					// 延迟加载评价列表，确保商品数据已完全加载
+					this.$nextTick(() => {
+						setTimeout(() => {
+							this.loadCommentList();
+						}, 500);
+					});
 				});
+			},
+			// 加载评价列表
+			async loadCommentList() {
+				// 等待商品数据加载完成
+				if (!this.product || !this.product.id) {
+					logger.debug('商品ID不存在，等待商品加载...');
+					setTimeout(() => {
+						if (this.product && this.product.id) {
+							this.loadCommentList();
+						}
+					}, 500);
+					return;
+				}
+				try {
+					logger.debug('开始加载评价，商品ID:', this.product.id);
+					const response = await getCommentListByProductId(this.product.id, 1, 5);
+					logger.debug('评价API响应:', response);
+					
+					// 处理响应数据
+					let commentData = null;
+					if (response && response.code === 200) {
+						commentData = response.data;
+					} else if (response && response.data) {
+						// 如果响应拦截器已经处理过，直接使用response
+						commentData = response.data;
+					} else {
+						commentData = response;
+					}
+					
+					if (commentData) {
+						if (commentData.list && Array.isArray(commentData.list)) {
+							// CommonPage格式
+							this.commentList = commentData.list || [];
+							this.commentTotal = commentData.total || commentData.list.length || 0;
+							logger.debug('评价列表加载成功（CommonPage格式），数量:', this.commentList.length);
+						} else if (Array.isArray(commentData)) {
+							// 直接数组格式
+							this.commentList = commentData || [];
+							this.commentTotal = commentData.length || 0;
+							logger.debug('评价列表加载成功（数组格式），数量:', this.commentList.length);
+						} else {
+							this.commentList = [];
+							this.commentTotal = 0;
+							logger.warn('评价数据格式不正确', commentData);
+						}
+						
+						// 加载每个评价的回复
+						if (this.commentList.length > 0) {
+							for (let comment of this.commentList) {
+								await this.loadCommentReplay(comment);
+							}
+							// 计算好评率
+							this.calculateGoodRate();
+						}
+					} else {
+						logger.debug('评价数据为空');
+						this.commentList = [];
+						this.commentTotal = 0;
+					}
+				} catch (error) {
+					logger.error('加载评价列表失败:', error);
+					this.commentList = [];
+					this.commentTotal = 0;
+					showError(error, '加载评价列表失败，请稍后重试');
+				}
+			},
+			// 加载评价回复
+			async loadCommentReplay(comment) {
+				try {
+					const response = await getCommentReplayList(comment.id);
+					if (response.code === 200) {
+						this.$set(comment, 'replayList', response.data || []);
+					}
+				} catch (error) {
+					logger.error('加载评价回复失败:', error);
+					// 静默失败，不影响主流程
+				}
+			},
+			// 计算好评率
+			calculateGoodRate() {
+				if (this.commentList.length === 0) {
+					this.goodRate = 100;
+					return;
+				}
+				let goodCount = 0;
+				this.commentList.forEach(comment => {
+					if (comment.star >= 4) {
+						goodCount++;
+					}
+				});
+				this.goodRate = Math.round((goodCount / this.commentList.length) * 100);
+			},
+			// 查看所有评价
+			viewAllComments() {
+				uni.navigateTo({
+					url: `/pages/product/commentList?productId=${this.product.id}`
+				});
+			},
+			// 预览评价图片
+			previewCommentPic(current, urls) {
+				// 过滤掉blob URL
+				const validUrls = urls.filter(url => {
+					if (!url) return false;
+					const trimmed = url.trim();
+					return trimmed && trimmed.length > 0 && !trimmed.startsWith('blob:');
+				});
+				if (validUrls.length === 0) {
+					uni.showToast({
+						title: '没有可预览的图片',
+						icon: 'none'
+					});
+					return;
+				}
+				uni.previewImage({
+					current: current,
+					urls: validUrls
+				});
+			},
+			// 获取图片列表（使用公共工具）
+			getPicList(pics) {
+				return getPicList(pics);
 			},
 			//规格弹窗开关
 			toggleSpec() {
@@ -454,10 +618,120 @@
 					});
 				}
 			},
+			//立即购买
 			buy() {
-				uni.showToast({
-					title: "暂时只支持从购物车下单！",
-					icon: 'none'
+				if (!this.checkForLogin()) {
+					return;
+				}
+				
+				// 检查是否选择了规格
+				let productSkuStock = this.getSkuStock();
+				if (!productSkuStock) {
+					uni.showToast({
+						title: '请选择商品规格',
+						icon: 'none',
+						duration: 2000
+					});
+					return;
+				}
+				
+				// 检查库存
+				if (productSkuStock.stock <= 0) {
+					uni.showToast({
+						title: '商品库存不足',
+						icon: 'none',
+						duration: 2000
+					});
+					return;
+				}
+				
+				uni.showLoading({
+					title: '处理中...'
+				});
+				
+				// 先将商品添加到购物车
+				let cartItem = {
+					price: this.product.price,
+					productAttr: productSkuStock.spData,
+					productBrand: this.product.brandName,
+					productCategoryId: this.product.productCategoryId,
+					productId: this.product.id,
+					productName: this.product.name,
+					productPic: this.product.pic,
+					productSkuCode: productSkuStock.skuCode,
+					productSkuId: productSkuStock.id,
+					productSn: this.product.productSn,
+					productSubTitle: this.product.subTitle,
+					quantity: 1
+				};
+				
+				// 先添加商品到购物车
+				addCartItem(cartItem).then(response => {
+					if (response.code === 200) {
+						// 添加成功后，重新获取购物车列表来找到对应的购物车项
+						fetchCartList().then(cartResponse => {
+							uni.hideLoading();
+							if (cartResponse.code === 200 && cartResponse.data && cartResponse.data.length > 0) {
+								// 查找匹配的商品（根据商品ID和SKU ID）
+								let targetCartItem = cartResponse.data.find(item => 
+									item.productId === this.product.id && 
+									item.productSkuId === productSkuStock.id
+								);
+								
+								if (targetCartItem) {
+									// 找到匹配的购物车项，跳转到订单创建页面
+									let cartIdsStr = encodeURIComponent(JSON.stringify([targetCartItem.id]));
+									uni.navigateTo({
+										url: `/pages/order/createOrder?cartIds=${cartIdsStr}`
+									});
+								} else {
+									// 如果找不到匹配项，使用最新的购物车项（可能是刚添加的）
+									let latestCartItem = cartResponse.data[cartResponse.data.length - 1];
+									if (latestCartItem) {
+										let cartIdsStr = encodeURIComponent(JSON.stringify([latestCartItem.id]));
+										uni.navigateTo({
+											url: `/pages/order/createOrder?cartIds=${cartIdsStr}`
+										});
+									} else {
+										uni.showToast({
+											title: '添加购物车失败，请重试',
+											icon: 'none',
+											duration: 2000
+										});
+									}
+								}
+							} else {
+								uni.showToast({
+									title: '添加购物车失败，请重试',
+									icon: 'none',
+									duration: 2000
+								});
+							}
+						}).catch(error => {
+							uni.hideLoading();
+							console.error('获取购物车列表失败:', error);
+							uni.showToast({
+								title: '添加购物车成功，请前往购物车结算',
+								icon: 'none',
+								duration: 2000
+							});
+						});
+					} else {
+						uni.hideLoading();
+						uni.showToast({
+							title: response.message || '添加购物车失败',
+							icon: 'none',
+							duration: 2000
+						});
+					}
+				}).catch(error => {
+					uni.hideLoading();
+					console.error('添加购物车失败:', error);
+					uni.showToast({
+						title: error.message || '添加购物车失败，请重试',
+						icon: 'none',
+						duration: 2000
+					});
 				});
 			},
 			stopPrevent() {},
@@ -483,9 +757,15 @@
 			},
 			//设置商品规格
 			initSpecList(data) {
+				// 安全检查
+				if (!data || !data.productAttributeList || !Array.isArray(data.productAttributeList)) {
+					logger.warn('商品规格数据不存在或格式错误');
+					return;
+				}
+				
 				for (let i = 0; i < data.productAttributeList.length; i++) {
 					let item = data.productAttributeList[i];
-					if (item.type == 0) {
+					if (item && item.type == 0) {
 						this.specList.push({
 							id: item.id,
 							name: item.name
@@ -493,24 +773,30 @@
 						if (item.handAddStatus == 1) {
 							//支持手动新增的
 							let valueList = data.productAttributeValueList;
-							let filterValueList = valueList.filter(value => value.productAttributeId == item.id);
-							let inputList = filterValueList[0].value.split(',');
-							for (let j = 0; j < inputList.length; j++) {
-								this.specChildList.push({
-									pid: item.id,
-									pname: item.name,
-									name: inputList[j]
-								});
+							if (valueList && Array.isArray(valueList)) {
+								let filterValueList = valueList.filter(value => value && value.productAttributeId == item.id);
+								if (filterValueList.length > 0 && filterValueList[0] && filterValueList[0].value) {
+									let inputList = filterValueList[0].value.split(',');
+									for (let j = 0; j < inputList.length; j++) {
+										this.specChildList.push({
+											pid: item.id,
+											pname: item.name,
+											name: inputList[j]
+										});
+									}
+								}
 							}
 						} else if (item.handAddStatus == 0) {
 							//不支持手动新增的
-							let inputList = item.inputList.split(',');
-							for (let j = 0; j < inputList.length; j++) {
-								this.specChildList.push({
-									pid: item.id,
-									pname: item.name,
-									name: inputList[j]
-								});
+							if (item.inputList) {
+								let inputList = item.inputList.split(',');
+								for (let j = 0; j < inputList.length; j++) {
+									this.specChildList.push({
+										pid: item.id,
+										pname: item.name,
+										name: inputList[j]
+									});
+								}
 							}
 						}
 					}
@@ -684,7 +970,7 @@
 									url: '/pages/public/login'
 								})
 							} else if (res.cancel) {
-								console.log('用户点击取消');
+								logger.debug('用户点击取消');
 							}
 						}
 					});
@@ -761,29 +1047,30 @@
 
 		.title {
 			font-size: 32upx;
-			color: $font-color-dark;
-			height: 50upx;
-			line-height: 50upx;
+			color: #333;
+			line-height: 1.5;
+			margin-bottom: 10upx;
+			font-weight: normal;
 		}
 
 		.title2 {
-			font-size: 28upx;
-			color: $font-color-light;
-			height: 46upx;
-			line-height: 46upx;
+			font-size: 26upx;
+			color: #999;
+			line-height: 1.5;
+			margin-bottom: 20upx;
 		}
 
 		.price-box {
 			display: flex;
 			align-items: baseline;
-			height: 64upx;
-			padding: 10upx 0;
-			font-size: 26upx;
-			color: $uni-color-primary;
+			padding: 20upx 0;
+			border-bottom: 1px solid #f0f0f0;
 		}
 
 		.price {
-			font-size: $font-lg + 2upx;
+			font-size: 36upx;
+			color: #ff4444;
+			font-weight: normal;
 		}
 
 		.m-price {
@@ -934,69 +1221,173 @@
 	}
 
 	/* 评价 */
-	.eva-section {
-		display: flex;
-		flex-direction: column;
-		padding: 20upx 30upx;
+	.comment-section {
 		background: #fff;
-		margin-top: 16upx;
+		margin-top: 20upx;
+		padding: 0 30upx;
+	}
 
-		.e-header {
-			display: flex;
-			align-items: center;
-			height: 70upx;
-			font-size: $font-sm + 2upx;
-			color: $font-color-light;
+	.comment-header {
+		display: flex;
+		align-items: center;
+		height: 90upx;
+		border-bottom: 1px solid #f0f0f0;
+		
+		.comment-title {
+			font-size: 32upx;
+			color: #333;
+			font-weight: normal;
+		}
+		
+		.comment-count {
+			font-size: 28upx;
+			color: #666;
+			margin-left: 10upx;
+		}
+		
+		.comment-rate {
+			flex: 1;
+			text-align: right;
+			font-size: 26upx;
+			color: #999;
+		}
+		
+		.icon-arrow {
+			font-size: 28upx;
+			color: #999;
+			margin-left: 10upx;
+		}
+	}
 
-			.tit {
-				font-size: $font-base + 2upx;
-				color: $font-color-dark;
-				margin-right: 4upx;
+	.no-comment {
+		padding: 60upx 0;
+		text-align: center;
+		color: #999;
+		font-size: 28upx;
+	}
+
+	.comment-item {
+		padding: 30upx 0;
+		border-bottom: 1px solid #f0f0f0;
+		
+		&:last-child {
+			border-bottom: none;
+		}
+	}
+
+	.comment-user {
+		display: flex;
+		align-items: center;
+		margin-bottom: 20upx;
+		
+		.user-avatar {
+			width: 60upx;
+			height: 60upx;
+			border-radius: 50%;
+			margin-right: 20upx;
+		}
+		
+		.user-info {
+			flex: 1;
+			
+			.user-name {
+				display: block;
+				font-size: 28upx;
+				color: #333;
+				margin-bottom: 8upx;
 			}
-
-			.tip {
-				flex: 1;
-				text-align: right;
+			
+			.star-box {
+				display: flex;
+				
+				.star {
+					font-size: 24upx;
+					margin-right: 4upx;
+					
+					&.star-active {
+						color: #ff9500;
+					}
+					
+					&.star-inactive {
+						color: #ddd;
+					}
+				}
 			}
+		}
+		
+		.comment-date {
+			font-size: 24upx;
+			color: #999;
+		}
+	}
 
-			.icon-you {
-				margin-left: 10upx;
+	.comment-content {
+		margin-bottom: 20upx;
+		
+		text {
+			font-size: 28upx;
+			color: #333;
+			line-height: 1.6;
+		}
+	}
+
+	.comment-pics {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10upx;
+		margin-bottom: 20upx;
+		
+		.comment-img {
+			width: 150upx;
+			height: 150upx;
+			border-radius: 4upx;
+		}
+	}
+
+	.admin-reply-box {
+		background: #f5f5f5;
+		border-radius: 4upx;
+		padding: 20upx;
+		margin-bottom: 20upx;
+		
+		.reply-box {
+			margin-bottom: 15upx;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
+			
+			.reply-title {
+				display: flex;
+				align-items: center;
+				margin-bottom: 10upx;
+				
+				.reply-name {
+					font-size: 26upx;
+					color: #333;
+					margin-right: 10upx;
+				}
+				
+				.reply-tag {
+					background: #4caf50;
+					color: #fff;
+					font-size: 20upx;
+					padding: 2upx 8upx;
+					border-radius: 2upx;
+				}
+			}
+			
+			.reply-text {
+				font-size: 26upx;
+				color: #666;
+				line-height: 1.5;
 			}
 		}
 	}
 
-	.eva-box {
-		display: flex;
-		padding: 20upx 0;
-
-		.portrait {
-			flex-shrink: 0;
-			width: 80upx;
-			height: 80upx;
-			border-radius: 100px;
-		}
-
-		.right {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			font-size: $font-base;
-			color: $font-color-base;
-			padding-left: 26upx;
-
-			.con {
-				font-size: $font-base;
-				color: $font-color-dark;
-				padding: 20upx 0;
-			}
-
-			.bot {
-				display: flex;
-				justify-content: space-between;
-				font-size: $font-sm;
-				color: $font-color-light;
-			}
-		}
+	.comment-attr {
+		font-size: 24upx;
+		color: #999;
 	}
 
 	/*  详情 */

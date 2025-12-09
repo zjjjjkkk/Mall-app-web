@@ -8,6 +8,7 @@
 				:class="icon"
 			></text>
 			<text class="cell-tit clamp">{{title}}</text>
+			<view v-if="badge" class="cell-badge">{{ badge }}</view>
 			<text v-if="tips" class="cell-tip">{{tips}}</text>
 			<text class="cell-more yticon" :class="typeList[navigateType]"></text>
 		</view>
@@ -30,6 +31,7 @@
 			icon: { type: String, default: '' },
 			title: { type: String, default: '标题' },
 			tips: { type: String, default: '' },
+			badge: { type: [String, Number], default: '' },
 			navigateType: { type: String, default: 'right' },
 			border: { type: String, default: 'b-b' },
 			hoverClass: { type: String, default: 'cell-hover' },
@@ -81,6 +83,17 @@
 			font-size: $font-base;
 			color: $font-color-dark;
 			margin-right:10upx;
+		}
+		.cell-badge{
+			background: #ff4757;
+			color: #fff;
+			font-size: 20rpx;
+			padding: 4rpx 12rpx;
+			border-radius: 20rpx;
+			margin-right: 10rpx;
+			min-width: 32rpx;
+			text-align: center;
+			line-height: 1.2;
 		}
 		.cell-tip{
 			font-size: $font-sm+2upx;

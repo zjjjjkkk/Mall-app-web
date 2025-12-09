@@ -153,9 +153,49 @@ export default {
 	},
 	onLoad (option) {
 		//商品数据
-		this.cartIds = JSON.parse(option.cartIds)
-		console.log(this.cartIds)
-		this.loadData()
+		try {
+			if (option.cartIds) {
+				// 尝试解析URL参数中的cartIds
+				// 如果参数被URL编码，先解码再解析
+				let cartIdsStr = decodeURIComponent(option.cartIds)
+				this.cartIds = JSON.parse(cartIdsStr)
+			} else {
+				// 如果没有传递cartIds参数，提示用户
+				uni.showToast({
+					title: '缺少购物车商品信息',
+					icon: 'none',
+					duration: 2000
+				})
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 2000)
+				return
+			}
+			console.log('购物车ID列表:', this.cartIds)
+			// 验证cartIds是否有效
+			if (!Array.isArray(this.cartIds) || this.cartIds.length === 0) {
+				uni.showToast({
+					title: '请选择要购买的商品',
+					icon: 'none',
+					duration: 2000
+				})
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 2000)
+				return
+			}
+			this.loadData()
+		} catch (error) {
+			console.error('解析购物车ID失败:', error)
+			uni.showToast({
+				title: '参数错误，请重新选择商品',
+				icon: 'none',
+				duration: 2000
+			})
+			setTimeout(() => {
+				uni.navigateBack()
+			}, 2000)
+		}
 	},
 	filters: {
 		formatProductAttr (jsonAttr) {
@@ -190,20 +230,68 @@ export default {
 	methods: {
 		//生成确认单信息
 		async loadData () {
+			// 检查cartIds是否有效
+			if (!this.cartIds || !Array.isArray(this.cartIds) || this.cartIds.length === 0) {
+				uni.showToast({
+					title: '请选择要购买的商品',
+					icon: 'none',
+					duration: 2000
+				})
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 2000)
+				return
+			}
+			
+			uni.showLoading({
+				title: '加载中...'
+			})
+			
 			// 保持参数格式与generateOrder一致，直接传递数组而不是JSON字符串
 			generateConfirmOrder(this.cartIds).then(response => {
-				this.memberReceiveAddressList = response.data.memberReceiveAddressList
-				this.currentAddress = this.getDefaultAddress()
-				this.cartPromotionItemList = response.data.cartPromotionItemList
-				this.couponList = []
-				for (let item of response.data.couponHistoryDetailList) {
-					this.couponList.push(item.coupon)
+				uni.hideLoading()
+				if (response.code === 200 && response.data) {
+					this.memberReceiveAddressList = response.data.memberReceiveAddressList || []
+					this.currentAddress = this.getDefaultAddress()
+					this.cartPromotionItemList = response.data.cartPromotionItemList || []
+					this.couponList = []
+					if (response.data.couponHistoryDetailList) {
+						for (let item of response.data.couponHistoryDetailList) {
+							if (item.coupon) {
+								this.couponList.push(item.coupon)
+							}
+						}
+					}
+					this.calcAmount = response.data.calcAmount || {}
+					this.integrationConsumeSetting = response.data.integrationConsumeSetting || {}
+					this.memberIntegration = response.data.memberIntegration || 0
+					
+					// 检查是否有商品数据
+					if (this.cartPromotionItemList.length === 0) {
+						uni.showToast({
+							title: '购物车商品已失效，请重新选择',
+							icon: 'none',
+							duration: 2000
+						})
+						setTimeout(() => {
+							uni.navigateBack()
+						}, 2000)
+					}
+				} else {
+					uni.showToast({
+						title: response.message || '加载订单信息失败',
+						icon: 'none',
+						duration: 2000
+					})
 				}
-				this.calcAmount = response.data.calcAmount
-				this.integrationConsumeSetting = response.data.integrationConsumeSetting
-				this.memberIntegration = response.data.memberIntegration
 			}).catch(error => {
+				uni.hideLoading()
 				console.error('加载订单确认信息失败:', error)
+				uni.showToast({
+					title: error.message || '加载订单信息失败，请重试',
+					icon: 'none',
+					duration: 2000
+				})
 			})
 		},
 		//显示优惠券面板

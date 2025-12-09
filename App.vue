@@ -5,6 +5,8 @@
 import {
 	mapMutations
 } from 'vuex'
+import { logTokenInfo, checkTokenFormat, getTokenInfo } from '@/utils/checkToken'
+
 export default {
 	methods: {
 		...mapMutations(['login'])
@@ -20,7 +22,35 @@ export default {
 				}
 			})
 		}
-
+		
+		// 在全局作用域添加 token 检查方法（仅用于调试）
+		// #ifdef H5
+		if (typeof window !== 'undefined') {
+			window.checkToken = () => {
+				console.log('🔍 Token 检查工具')
+				console.log('====================')
+				logTokenInfo()
+				console.log('====================')
+				console.log('💡 提示: 如果 token 不存在，请先登录')
+				return getTokenInfo()
+			}
+			
+			window.getToken = () => {
+				const token = uni.getStorageSync('token')
+				if (token) {
+					console.log('Token:', token.substring(0, 50) + '...')
+					return token
+				} else {
+					console.log('❌ 未找到 token')
+					return null
+				}
+			}
+			
+			console.log('✅ Token 检查工具已加载')
+			console.log('💡 在控制台输入 checkToken() 检查 token 状态')
+			console.log('💡 在控制台输入 getToken() 获取完整 token')
+		}
+		// #endif
 	},
 	onShow: function () {
 		console.log('App Show')
@@ -338,6 +368,16 @@ export default {
 
 .icon-dianzan-ash:before {
 	content: "\e617";
+}
+
+/* 报修图标 - 使用工具/维修相关图标 */
+.icon-baoxiu:before {
+	content: "\e679"; /* 使用帮助图标，表示报修/维修服务 */
+}
+
+/* 客服图标 - 使用消息/客服相关图标 */
+.icon-kefu:before {
+	content: "\e618"; /* 使用消息图标，表示客服沟通 */
 }
 
 

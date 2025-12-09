@@ -62,7 +62,7 @@ http.interceptor.response((response) => { /* 请求之后拦截器 */
 							url: '/pages/public/login'
 						})
 					} else if (res.cancel) {
-						console.log('用户点击取消');
+						// 用户取消登录，静默处理
 					}
 				}
 			});
@@ -73,7 +73,7 @@ http.interceptor.response((response) => { /* 请求之后拦截器 */
 	}
 }, (error) => {
 	//提示错误信息
-	console.log('response error拦截器:', error);
+	// 错误已在下方处理，无需额外日志
 	let errorMsg = '网络请求失败';
 	if (error.statusCode) {
 		if (error.statusCode === 500) {

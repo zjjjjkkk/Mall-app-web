@@ -21,3 +21,13 @@ export function fetchMemberCouponList(useStatus) {
 		params:{useStatus:useStatus}
 	})
 }
+
+/**
+ * 使用积分兑换优惠券
+ */
+export function exchangeCouponWithIntegration(couponId) {
+	return request({
+		method: 'POST',
+		url: `/member/coupon/exchange/${couponId}`
+	})
+}

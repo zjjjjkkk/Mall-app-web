@@ -1,5 +1,11 @@
 <template>
 	<view class="content">
+		<!-- 搜索关键词显示 -->
+		<view v-if="searchParam.keyword" class="search-keyword-bar">
+			<text class="keyword-label">搜索：</text>
+			<text class="keyword-text">{{ searchParam.keyword }}</text>
+			<text class="keyword-clear" @click="clearKeyword">✕</text>
+		</view>
 		<view class="navbar" :style="{position:headerPosition,top:headerTop}">
 			<view class="nav-item" :class="{current: filterIndex === 0}" @click="tabClick(0)">
 				综合排序
@@ -70,6 +76,7 @@
 				productList: [],
 				searchParam: {
 					productCategoryId: null,
+					keyword: null,
 					pageNum: 1,
 					pageSize: 6,
 					sort: 0
@@ -79,9 +86,27 @@
 
 		onLoad(options) {
 			// #ifdef H5
-			this.headerTop = document.getElementsByTagName('uni-page-head')[0].offsetHeight + 'px';
+			// 安全地获取页面头部高度
+			this.$nextTick(() => {
+				try {
+					const pageHead = document.getElementsByTagName('uni-page-head')[0];
+					if (pageHead) {
+						this.headerTop = pageHead.offsetHeight + 'px';
+					}
+				} catch (e) {
+					console.warn('获取页面头部高度失败:', e);
+					this.headerTop = '0px';
+				}
+			});
 			// #endif
-			this.searchParam.productCategoryId = options.sid;
+			// 只有当 sid 存在时才设置 productCategoryId
+			if (options.sid) {
+				this.searchParam.productCategoryId = options.sid;
+			}
+			// 如果有 keyword 参数，设置搜索关键词
+			if (options.keyword) {
+				this.searchParam.keyword = options.keyword;
+			}
 			this.loadCateList(options.fid, options.sid);
 			this.loadData();
 		},
@@ -138,7 +163,15 @@
 						this.searchParam.sort = 4;
 					}
 				}
-				searchProductList(this.searchParam).then(response => {
+				// 过滤掉 null 和 undefined 的参数，避免发送无效参数
+				const params = {};
+				Object.keys(this.searchParam).forEach(key => {
+					const value = this.searchParam[key];
+					if (value !== null && value !== undefined && value !== '') {
+						params[key] = value;
+					}
+				});
+				searchProductList(params).then(response => {
 					let productList = response.data.list;
 					if (response.data.list.length === 0) {
 						//没有更多了
@@ -211,6 +244,13 @@
 					url: `/pages/product/product?id=${id}`
 				})
 			},
+			// 清除搜索关键词
+			clearKeyword() {
+				this.searchParam.keyword = null;
+				this.searchParam.pageNum = 1;
+				this.productList = [];
+				this.loadData('refresh');
+			},
 			stopPrevent() {}
 		},
 	}
@@ -224,6 +264,36 @@
 
 	.content {
 		padding-top: 96upx;
+	}
+
+	/* 搜索关键词栏 */
+	.search-keyword-bar {
+		display: flex;
+		align-items: center;
+		padding: 20upx 30upx;
+		background: #fff;
+		border-bottom: 1upx solid #f0f0f0;
+		margin-top: 96upx;
+
+		.keyword-label {
+			font-size: 26upx;
+			color: $font-color-light;
+			margin-right: 10upx;
+		}
+
+		.keyword-text {
+			flex: 1;
+			font-size: 28upx;
+			color: $font-color-dark;
+			font-weight: 500;
+		}
+
+		.keyword-clear {
+			font-size: 32upx;
+			color: $font-color-light;
+			padding: 10upx;
+			margin-left: 20upx;
+		}
 	}
 
 	.navbar {
